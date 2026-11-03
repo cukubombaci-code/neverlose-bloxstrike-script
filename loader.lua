@@ -1,58 +1,35 @@
--- Neverlose Bloxstrike Korumalı Loader (v3.5)
-local HttpService = game:GetService("HttpService")
+-- loader.lua (Sadece Security ve ESP Çağıran Kararlı Sürüm)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- 1. Aşama: Temel Ortam Kontrolü
-local function verifyEnvironment()
-    if not game.HttpGet then
-        warn("[Loader] Desteklenmeyen executor!")
-        return false
+-- Önbellek kırıcı (Cache-buster) ile en güncel sürümü çeker
+local function LoadScript(fileName)
+    local url = "https://raw.githubusercontent.com/cukubombaci-code/neverlose-bloxstrike-script/main/src/" .. fileName .. ".lua?t=" .. tostring(os.time())
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    
+    if success then
+        print("[Neverlose] Başarıyla yüklendi: " .. fileName)
+        return result
+    else
+        warn("[Neverlose] Yükleme hatası (" .. fileName + "): " + tostring(result))
+        return nil
     end
-    return true
 end
 
-if not verifyEnvironment() then return end
+-- 1. Önce Güvenlik ve Bypass Modülünü Çalıştır
+print("[Neverlose] Güvenlik duvarı devreye sokuluyor...")
+LoadScript("security")
 
-print("[Loader] Güvenlik duvarı ve Bypass başlatılıyor...")
+-- 2. Ardından ESP Modülünü Çalıştır
+task.wait(0.5)
+print("[Neverlose] ESP modülü yükleniyor...")
+local ESP = LoadScript("esp")
 
--- Önbellek kırıcı fonksiyonu (GitHub cache sorununu çözer)
-local function GetUrl(path)
-    return "https://raw.githubusercontent.com/cukubombaci-code/neverlose-bloxstrike-script/main/src/" .. path .. "?t=" .. tostring(os.time())
+-- Otomatik Master Enabled yap (İsteğe bağlı, direkt başlasın diye)
+if ESP and ESP.Toggle then
+    ESP.Toggle(true)
+    print("[Neverlose] ESP aktif edildi!")
 end
 
--- 2. Aşama: Bypass Kontrolü (src/security.lua)
-local securitySuccess, securityErr = pcall(function()
-    local targetUrl = GetUrl("security.lua")
-    local code = game:HttpGet(targetUrl)
-    
-    if not code or #code < 10 then
-        error("Security dosyası boş veya çekilemedi!")
-    
-    end
-    
-    loadstring(code)()
-end)
-
-if not securitySuccess then
-    warn("[Loader] Kritik Hata: Bypass yüklenemedi! " .. tostring(securityErr))
-    return -- Hata alırsa akışı tamamen keser
-end
-
-print("[Loader] Bypass başarıyla uygulandı. Menü yükleniyor...")
-
--- 3. Aşama: Menüyü Yükleme (src/menu.lua)
-local menuSuccess, menuErr = pcall(function()
-    local targetUrl = GetUrl("menu.lua")
-    local code = game:HttpGet(targetUrl)
-    
-    if not code or #code < 10 then
-        error("Menu dosyası boş veya çekilemedi!")
-    end
-    
-    loadstring(code)()
-end)
-
-if menuSuccess then
-    print("[Loader] Sistem başarıyla başlatıldı. İyi oyunlar!")
-else
-    warn("[Loader] Menü yüklenirken hata oluştu: " .. tostring(menuErr))
-end
