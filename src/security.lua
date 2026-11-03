@@ -1,4 +1,4 @@
--- src/security.lua (Full+Full Mobile Optimized & Crash-Proof)
+-- src/security.lua (Mobile Safe Bypass - Hookmetamethod İçermez)
 local Security = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,133 +7,36 @@ local LocalPlayer = Players.LocalPlayer
 local settings = {
     AntiKick = true,
     AntiFling = true,
-    AntiVoid = true,
-    WalkSpeedSpoof = true,
-    JumpPowerSpoof = true,
-    RemoteThrottler = true,
-    RemoteDelay = 0.04,
-    SanitizeRemotes = false, -- Varsayılan KAPALI (Eğer oyun izin veriyorsa menüden açarsın)
-    AntiDestroy = true,
-    HideUI = true
+    AntiVoid = true
 }
 
-local lastRemoteTime = 0
-local originalWalkSpeed = 16
-local originalJumpPower = 50
-
--- 1. ANTI-KICK
-local oldKick
-oldKick = hookfunction(LocalPlayer.Kick, function(self, message)
-    if settings.AntiKick and not checkcaller() then
-        warn("[Security] Kick girisimi engellendi! Sunucu Sebebi: " .. tostring(message))
-        return
-    end
-    return oldKick(self, message)
-end)
-
--- 2. ANTI-DESTROY
-local oldDestroy
-oldDestroy = hookfunction(Instance.new("ScreenGui").Destroy, function(self)
-    if settings.AntiDestroy and not checkcaller() then
-        if self.Name == "NeverloseMobileMenu" or self:FindFirstChild("NeverloseMobileMenu") then
-            return
+-- 1. ANTI-KICK (Sunucu seni atmaya çalışırsa engelle)
+if settings.AntiKick then
+    pcall(function()
+        local oldKick = LocalPlayer.Kick
+        LocalPlayer.Kick = function(self, message)
+            warn("[Security] Kick engellendi: " .. tostring(message))
         end
-    end
-    return oldDestroy(self)
-end)
+    end)
+end
 
--- 3. METAMETHOD HOOKS
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-local oldIndex = mt.__index
-setreadonly(mt, false)
-
-mt.__index = newcclosure(function(self, key)
-    if not checkcaller() then
-        local char = LocalPlayer.Character
-        if char and self == char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then
-                if key == "WalkSpeed" and settings.WalkSpeedSpoof then return originalWalkSpeed
-                elseif key == "JumpPower" and settings.JumpPowerSpoof then return originalJumpPower end
-            end
-        end
-        
-        if settings.HideUI and self == game:GetService("CoreGui") then
-            if key == "FindFirstChild" or key == "GetChildren" or key == "GetDescendants" then
-                return function(_, childName)
-                    if childName == "NeverloseMobileMenu" then return nil end
-                    return oldIndex(self, key)(self, childName)
-                end
-            end
-        end
-    end
-    return oldIndex(self, key)
-end)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    
-    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-        local args = {...}
-        local remoteName = string.lower(self.Name)
-        
-        -- Throttler
-        if remoteName:find("fire") or remoteName:find("shoot") or remoteName:find("hit") or remoteName:find("damage") then
-            if settings.RemoteThrottler then
-                local currentTime = tick()
-                if currentTime - lastRemoteTime < settings.RemoteDelay then
-                    return
-                end
-                lastRemoteTime = currentTime
-            end
-        end
-        
-        -- Sanitizer (Sadece açıksa çalışır)
-        if settings.SanitizeRemotes and remoteName:find("damage") then
-            for i, v in pairs(args) do
-                if type(v) == "string" and (v == "Head" or v == "HeadHitbox") then
-                    args[i] = "UpperTorso"
-                end
-            end
-        end
-        
-        return oldNamecall(self, unpack(args))
-    end
-    
-    return oldNamecall(self, ...)
-end)
-
-setreadonly(mt, true)
-
--- 4. VELOCITY ve VOID Koruması (Çökme korumalı)
+-- 2. FİZİKSEL KORUMALAR (Anti-Fling & Anti-Void)
 RunService.Heartbeat:Connect(function()
-    pcall(function() -- KRİTİK DÜZELTME: Oyun çökmesini engeller
-        if not settings.AntiFling and not settings.AntiVoid then return end
+    pcall(function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local root = char.HumanoidRootPart
             
+            -- Başka bir hileci seni fırlatırsa durdur
             if settings.AntiFling and root.AssemblyLinearVelocity.Magnitude > 150 then
                 root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                 root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
             end
             
+            -- Haritadan aşağı düşersen yukarı çek
             if settings.AntiVoid and root.Position.Y < -500 then
                 root.CFrame = CFrame.new(root.Position.X, 50, root.Position.Z)
             end
-        end
-    end)
-end)
-
--- Karakter yenilendiğinde hızı kaydet
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(1)
-    pcall(function()
-        local hum = char:WaitForChild("Humanoid", 5)
-        if hum then
-            originalWalkSpeed = hum.WalkSpeed
-            originalJumpPower = hum.JumpPower or 50
         end
     end)
 end)
