@@ -1,4 +1,4 @@
--- src/movement.lua (Mobil Uyumlu & Güvenli Bunnyhop & Air Strafe)
+-- src/movement.lua (Mobil Uyumlu & Full Hız Destekli)
 local Movement = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,11 +7,11 @@ local LocalPlayer = Players.LocalPlayer
 local settings = {
     -- Bunnyhop
     BhopEnabled = false,
-    BhopSpeed = 40,      -- Mobilde savrulmayı önlemek için dengeli hız
+    BhopSpeed = 60,      -- Zıplarken ulaşılacak hız (Varsayılan 16'dır, 60 uçurur)
     
     -- Air Strafe
     AirStrafeEnabled = false,
-    AirStrafeSpeed = 40
+    AirStrafeSpeed = 60  -- Havadaki hız
 }
 
 function Movement.Set(key, value)
@@ -29,19 +29,26 @@ RunService.RenderStepped:Connect(function()
         
         if hum and root then
             local isAirborne = (hum.FloorMaterial == Enum.Material.Air)
+            local moveDir = hum.MoveDirection
             
-            -- 1. BUNNYHOP (Dokunmatik ve Mobil Uyumlu Otomatik Zıplama)
+            -- 1. BUNNYHOP (Otomatik Zıplama + Hız Kazandırma)
             if settings.BhopEnabled then
-                if hum.JumpPower > 0 or hum.JumpHeight > 0 then
-                    if not isAirborne then
-                        hum.Jump = true
+                if not isAirborne then
+                    hum.Jump = true
+                    -- Eğer hareket ediyorsak (W,A,S,D veya joystick), Bhop hızını uygula
+                    if moveDir.Magnitude > 0 then
+                        local currentVel = root.AssemblyLinearVelocity
+                        root.AssemblyLinearVelocity = Vector3.new(
+                            moveDir.X * settings.BhopSpeed, 
+                            currentVel.Y, -- Zıplama gücünü koru
+                            moveDir.Z * settings.BhopSpeed
+                        )
                     end
                 end
             end
             
-            -- 2. AIR STRAFE (Havada Kontrol ve Hızlanma)
+            -- 2. AIR STRAFE (Havada Yönlendirme ve Hızlanma)
             if settings.AirStrafeEnabled and isAirborne then
-                local moveDir = hum.MoveDirection
                 if moveDir.Magnitude > 0 then
                     local currentVel = root.AssemblyLinearVelocity
                     local targetVel = Vector3.new(
@@ -49,7 +56,8 @@ RunService.RenderStepped:Connect(function()
                         currentVel.Y, 
                         moveDir.Z * settings.AirStrafeSpeed
                     )
-                    root.AssemblyLinearVelocity = currentVel:Lerp(targetVel, 0.1)
+                    -- 0.15 Lerp değeri havada daha akıcı dönüş sağlar
+                    root.AssemblyLinearVelocity = currentVel:Lerp(targetVel, 0.15)
                 end
             end
         end
