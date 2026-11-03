@@ -1,4 +1,4 @@
--- src/anti-aim.lua (Mobil Uyumlu & Crash Atmayan Sürüm)
+-- src/anti-aim.lua (Mobil Uyumlu & Kusursuz)
 local AntiAim = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,8 +7,8 @@ local Camera = workspace.CurrentCamera
 
 local settings = {
     Enabled = false,
-    Mode = "Backward",   -- "Backward", "Mevlana" (Mobilde Jitter yerine sade modlar daha kararlıdır)
-    Speed = 10
+    Mode = "Mevlana",   -- "Backward", "Mevlana"
+    Speed = 15
 }
 
 function AntiAim.Set(key, value)
@@ -34,12 +34,15 @@ RunService.RenderStepped:Connect(function()
         
         pcall(function()
             char.Humanoid.AutoRotate = false
-            local camLook = Camera.CFrame.LookVector
             
             if settings.Mode == "Backward" then
-                -- Kameraya sırtını dön (Güvenli CFrame)
+                -- Kameranın baktığı yönü al
+                local camLook = Camera.CFrame.LookVector
+                -- Karakterin sırtını kameraya dön (180 derece ters)
                 local targetPos = root.Position - Vector3.new(camLook.X, 0, camLook.Z).Unit
-                root.CFrame = CFrame.new(root.Position, targetPos)
+                
+                -- Fizik motorunu kitlememek için lerp kullan (Yumuşak geçiş)
+                root.CFrame = root.CFrame:Lerp(CFrame.lookAt(root.Position, targetPos), 0.5)
                 
             elseif settings.Mode == "Mevlana" then
                 -- Mobilde kasmayacak optimize edilmiş dönüş
