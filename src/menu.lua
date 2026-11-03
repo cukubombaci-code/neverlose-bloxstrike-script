@@ -1,10 +1,10 @@
--- src/menu.lua (Lobi Dostu - CoreGui Kullanmaz)
+-- src/menu.lua
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Hile Modüllerini Yükle (Hata olursa lobi çökmesin diye pcall içinde)
+-- Hile Modüllerini Yükle
 local function LoadModule(name)
     local url = "https://raw.githubusercontent.com/cukubombaci-code/neverlose-bloxstrike-script/main/src/" .. name .. ".lua"
     local success, result = pcall(function() return loadstring(game:HttpGet(url))() end)
@@ -13,9 +13,6 @@ end
 
 local ESP = LoadModule("esp")
 local Aimbot = LoadModule("aimbot")
-local Rage = LoadModule("ragebot")
-local Movement = LoadModule("movement")
-local Trigger = LoadModule("triggerbot")
 
 -- ANA MENÜ TASARIMI
 local ScreenGui = Instance.new("ScreenGui")
@@ -93,26 +90,31 @@ local function CreateTab(name)
     return TabBtn, Page
 end
 
-local RageBtn, RagePage = CreateTab("RAGE")
-CreateToggle(RagePage, "Enable Ragebot", false, function(s) if Rage.Toggle then Rage.Toggle(s) end end)
+-- AIMBOT TAB
 local AimBtn, AimPage = CreateTab("AIMBOT")
-CreateToggle(AimPage, "Enable Legitbot", false, function(s) if Aimbot.Toggle then Aimbot.Toggle(s) end end)
-local VisBtn, VisPage = CreateTab("VISUALS")
-CreateToggle(VisPage, "Enable ESP", false, function(s) if ESP.Toggle then ESP.Toggle(s) end end)
-local MovBtn, MovPage = CreateTab("MOVEMENT")
-CreateToggle(MovPage, "Enable Bunnyhop", false, function(s) if Movement.Set then Movement.Set("BhopEnabled", s) end end)
+CreateToggle(AimPage, "Enable Legitbot", false, function(s) 
+    if Aimbot.Toggle then Aimbot.Toggle(s) end 
+end)
 
-local tabs = { {Btn=RageBtn, Page=RagePage}, {Btn=AimBtn, Page=AimPage}, {Btn=VisBtn, Page=VisPage}, {Btn=MovBtn, Page=MovPage} }
+-- VISUALS TAB
+local VisBtn, VisPage = CreateTab("VISUALS")
+CreateToggle(VisPage, "Enable ESP", false, function(s) 
+    if ESP.Toggle then ESP.Toggle(s) end 
+end)
+CreateToggle(VisPage, "Show Box", true, function(s) 
+    if ESP.Set then ESP.Set("BoxEnabled", s) end 
+end)
+
+-- Sekme Geçişleri
+local tabs = { {Btn=AimBtn, Page=AimPage}, {Btn=VisBtn, Page=VisPage} }
 local function SelectTab(index)
     for i, tab in ipairs(tabs) do
         tab.Page.Visible = (i == index)
         tab.Btn.BackgroundColor3 = (i == index) and Color3.fromRGB(255, 0, 255) or Color3.fromRGB(30, 30, 40)
     end
 end
-RageBtn.MouseButton1Click:Connect(function() SelectTab(1) end)
-AimBtn.MouseButton1Click:Connect(function() SelectTab(2) end)
-VisBtn.MouseButton1Click:Connect(function() SelectTab(3) end)
-MovBtn.MouseButton1Click:Connect(function() SelectTab(4) end)
+AimBtn.MouseButton1Click:Connect(function() SelectTab(1) end)
+VisBtn.MouseButton1Click:Connect(function() SelectTab(2) end)
 SelectTab(1)
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
@@ -131,12 +133,11 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- MOBİL BUTON (PlayerGui Kullanır - Oyundan Atmayı Engeller)
+-- MOBİL BUTON
 local mobileGui = Instance.new("ScreenGui")
 mobileGui.Name = "NeverloseMobileBtn"
 mobileGui.ResetOnSpawn = false
 mobileGui.DisplayOrder = 999
--- pcall(CoreGui) KALDIRILDI. Direkt PlayerGui'ye basıyoruz.
 mobileGui.Parent = PlayerGui 
 
 local FAB = Instance.new("TextButton")
