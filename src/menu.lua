@@ -1,10 +1,10 @@
--- src/menu.lua (Tam Sürüm - Senin Hile Dosyalarını Çeker)
+-- src/menu.lua (Lobi Dostu - CoreGui Kullanmaz)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Hile Modüllerini Yükle
+-- Hile Modüllerini Yükle (Hata olursa lobi çökmesin diye pcall içinde)
 local function LoadModule(name)
     local url = "https://raw.githubusercontent.com/cukubombaci-code/neverlose-bloxstrike-script/main/src/" .. name .. ".lua"
     local success, result = pcall(function() return loadstring(game:HttpGet(url))() end)
@@ -35,12 +35,10 @@ MainFrame.Parent = ScreenGui
 local UICorner = Instance.new("UICorner"); UICorner.CornerRadius = UDim.new(0, 12); UICorner.Parent = MainFrame
 local UIStroke = Instance.new("UIStroke"); UIStroke.Color = Color3.fromRGB(255, 0, 255); UIStroke.Thickness = 1.5; UIStroke.Parent = MainFrame
 
--- Başlık (Sürüklenebilir)
+-- Başlık
 local Header = Instance.new("Frame")
-Header.Size = UDim2.new(1, 0, 0, 40)
-Header.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-Header.BackgroundTransparency = 0.5
-Header.Parent = MainFrame
+Header.Size = UDim2.new(1, 0, 0, 40); Header.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+Header.BackgroundTransparency = 0.5; Header.Parent = MainFrame
 local HeaderCorner = Instance.new("UICorner"); HeaderCorner.CornerRadius = UDim.new(0, 12); HeaderCorner.Parent = Header
 
 local Title = Instance.new("TextLabel")
@@ -64,7 +62,6 @@ local ContentArea = Instance.new("Frame")
 ContentArea.Size = UDim2.new(1, -20, 1, -85); ContentArea.Position = UDim2.new(0, 10, 0, 80)
 ContentArea.BackgroundTransparency = 1; ContentArea.Parent = MainFrame
 
--- Buton Oluşturucu
 local function CreateToggle(parent, text, default, callback)
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(1, 0, 0, 35); Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -72,24 +69,14 @@ local function CreateToggle(parent, text, default, callback)
     Btn.Font = Enum.Font.Gotham; Btn.TextSize = 14; Btn.TextXAlignment = Enum.TextXAlignment.Left
     Btn.Parent = parent
     local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = Btn
-    
     local enabled = default
     local function UpdateColor()
-        if enabled then
-            Btn.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
-            Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            Btn.Text = "  [AÇIK] " .. text
-        else
-            Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-            Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-            Btn.Text = "  [KAPALI] " .. text
-        end
+        if enabled then Btn.BackgroundColor3 = Color3.fromRGB(255, 0, 255); Btn.Text = "  [AÇIK] " .. text
+        else Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35); Btn.Text = "  [KAPALI] " .. text end
     end
     UpdateColor()
-    
     Btn.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        UpdateColor()
+        enabled = not enabled; UpdateColor()
         if callback then pcall(callback, enabled) end
     end)
 end
@@ -100,32 +87,21 @@ local function CreateTab(name)
     TabBtn.Text = name; TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     TabBtn.Font = Enum.Font.GothamBold; TabBtn.TextSize = 12; TabBtn.Parent = TabList
     local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = TabBtn
-    
     local Page = Instance.new("ScrollingFrame")
     Page.Size = UDim2.new(1, 0, 1, 0); Page.BackgroundTransparency = 1; Page.Visible = false; Page.Parent = ContentArea
     local layout = Instance.new("UIListLayout"); layout.Padding = UDim.new(0, 5); layout.Parent = Page
     return TabBtn, Page
 end
 
--- Hile Menülerini Doldur
 local RageBtn, RagePage = CreateTab("RAGE")
 CreateToggle(RagePage, "Enable Ragebot", false, function(s) if Rage.Toggle then Rage.Toggle(s) end end)
-CreateToggle(RagePage, "Auto Fire", true, function(s) if Rage.Set then Rage.Set("AutoFire", s) end end)
-
 local AimBtn, AimPage = CreateTab("AIMBOT")
 CreateToggle(AimPage, "Enable Legitbot", false, function(s) if Aimbot.Toggle then Aimbot.Toggle(s) end end)
-CreateToggle(AimPage, "Enable Triggerbot", false, function(s) if Trigger.Toggle then Trigger.Toggle(s) end end)
-
 local VisBtn, VisPage = CreateTab("VISUALS")
 CreateToggle(VisPage, "Enable ESP", false, function(s) if ESP.Toggle then ESP.Toggle(s) end end)
-CreateToggle(VisPage, "Show Box", true, function(s) if ESP.Set then ESP.Set("BoxEnabled", s) end end)
-CreateToggle(VisPage, "Enable Chams", false, function(s) if ESP.Set then ESP.Set("ChamsEnabled", s) end end)
-
 local MovBtn, MovPage = CreateTab("MOVEMENT")
 CreateToggle(MovPage, "Enable Bunnyhop", false, function(s) if Movement.Set then Movement.Set("BhopEnabled", s) end end)
-CreateToggle(MovPage, "Enable Air Strafe", false, function(s) if Movement.Set then Movement.Set("AirStrafeEnabled", s) end end)
 
--- Sekme Geçişleri
 local tabs = { {Btn=RageBtn, Page=RagePage}, {Btn=AimBtn, Page=AimPage}, {Btn=VisBtn, Page=VisPage}, {Btn=MovBtn, Page=MovPage} }
 local function SelectTab(index)
     for i, tab in ipairs(tabs) do
@@ -138,7 +114,6 @@ AimBtn.MouseButton1Click:Connect(function() SelectTab(2) end)
 VisBtn.MouseButton1Click:Connect(function() SelectTab(3) end)
 MovBtn.MouseButton1Click:Connect(function() SelectTab(4) end)
 SelectTab(1)
-
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
 -- Sürükleme
@@ -156,13 +131,13 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- MOBİL BUTON (FAB)
+-- MOBİL BUTON (PlayerGui Kullanır - Oyundan Atmayı Engeller)
 local mobileGui = Instance.new("ScreenGui")
 mobileGui.Name = "NeverloseMobileBtn"
 mobileGui.ResetOnSpawn = false
 mobileGui.DisplayOrder = 999
-pcall(function() mobileGui.Parent = game:GetService("CoreGui") end)
-if not mobileGui.Parent then mobileGui.Parent = PlayerGui end
+-- pcall(CoreGui) KALDIRILDI. Direkt PlayerGui'ye basıyoruz.
+mobileGui.Parent = PlayerGui 
 
 local FAB = Instance.new("TextButton")
 FAB.Size = UDim2.fromOffset(60, 60); FAB.Position = UDim2.new(1, -80, 1, -100)
