@@ -1,8 +1,8 @@
--- loader.lua (Sadece Security ve ESP Çağıran Kararlı Sürüm)
+-- loader.lua (Sadece Security ve Menu Çağıran Test Sürümü)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Önbellek kırıcı (Cache-buster) ile en güncel sürümü çeker
+-- Önbellek kırıcı ile en güncel sürümü çeken fonksiyon
 local function LoadScript(fileName)
     local url = "https://raw.githubusercontent.com/cukubombaci-code/neverlose-bloxstrike-script/main/src/" .. fileName .. ".lua?t=" .. tostring(os.time())
     local success, result = pcall(function()
@@ -13,7 +13,7 @@ local function LoadScript(fileName)
         print("[Neverlose] Başarıyla yüklendi: " .. fileName)
         return result
     else
-        warn("[Neverlose] Yükleme hatası (" .. fileName + "): " + tostring(result))
+        warn("[Neverlose] Yükleme hatası (" .. fileName .. "): " .. tostring(result))
         return nil
     end
 end
@@ -22,14 +22,7 @@ end
 print("[Neverlose] Güvenlik duvarı devreye sokuluyor...")
 LoadScript("security")
 
--- 2. Ardından ESP Modülünü Çalıştır
+-- 2. Ardından Menü Modülünü Çalıştır (ESP harici diğer modüller menü içinde yüklenir)
 task.wait(0.5)
-print("[Neverlose] ESP modülü yükleniyor...")
-local ESP = LoadScript("esp")
-
--- Otomatik Master Enabled yap (İsteğe bağlı, direkt başlasın diye)
-if ESP and ESP.Toggle then
-    ESP.Toggle(true)
-    print("[Neverlose] ESP aktif edildi!")
-end
-
+print("[Neverlose] Menü yükleniyor...")
+LoadScript("menu")
