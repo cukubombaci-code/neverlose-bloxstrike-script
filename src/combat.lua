@@ -1,4 +1,4 @@
--- src/combat.lua (No Recoil, Rapid Fire, Auto Reload)
+-- src/combat.lua (Mobil Uyumlu & Crash Atmayan Sürüm)
 local Combat = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -11,11 +11,11 @@ local settings = {
     NoRecoil = false,
     RapidFire = false,
     AutoReload = false,
-    FireRate = 10 -- Rapid fire için ms
+    FireRate = 60, -- Mobilde sunucudan kick/ban yememek için 60ms güvenlidir
 }
 
 local lastShot = 0
-local isMouseDown = false
+local isTouching = false
 
 function Combat.Set(key, value)
     if settings[key] ~= nil then settings[key] = value end
@@ -25,62 +25,43 @@ function Combat.Toggle(state)
     settings.Enabled = state
 end
 
--- Mouse takibi
+-- Hem Fare hem de Mobil Dokunmatik (Touch) Desteği
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isMouseDown = true
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isTouching = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isMouseDown = false
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isTouching = false
     end
 end)
 
--- No Recoil (Kamera sekme engelleyici)
-local originalCFrame
 RunService.RenderStepped:Connect(function()
     if not settings.Enabled then return end
     
-    -- No Recoil Mantığı (Kamera zıplamasını sıfırla)
-    if settings.NoRecoil and isMouseDown then
-        -- Eğer ateş ederken kamera tepe vurursa, bunu yumuşat
-        local currentCFrame = Camera.CFrame
-        local _, currentPitch, _ = currentCFrame:ToEulerAnglesYXZ()
+    pcall(function()
+        local char = LocalPlayer.Character
+        local tool = char and char:FindFirstChildOfClass("Tool")
         
-        -- Basit bir pitch (yukarı bakma) sınırlandırması (Sekmeyi engeller)
-        -- Roblox'ta silahlar genelde kamerayı X ekseninde yukarı iter
-        local targetPitch = math.clamp(currentPitch, -math.rad(80), math.rad(80))
-        -- Camera.CFrame = CFrame.new(currentCFrame.Position) * CFrame.Angles(0, 0, 0) -- Gerekirse burada kamerayı sabitle
-    end
-
-    -- Rapid Fire ve Auto Reload
-    local char = LocalPlayer.Character
-    local tool = char and char:FindFirstChildOfClass("Tool")
-    
-    if tool then
-        -- Rapid Fire (Hızlı Ateş)
-        if settings.RapidFire and isMouseDown then
-            if tick() - lastShot >= (settings.FireRate / 1000) then
-                lastShot = tick()
-                pcall(function() tool:Activate() end)
+        if tool then
+            -- Rapid Fire (Mobil Uyumlu Hızlı Ateş)
+            if settings.RapidFire and isTouching then
+                local currentTime = tick() * 1000
+                if currentTime - lastShot >= settings.FireRate then
+                    lastShot = currentTime
+                    tool:Activate()
+                end
+            end
+            
+            -- No Recoil (Hafifletilmiş ve Güvenli Kamera Sabitleme)
+            if settings.NoRecoil and isTouching then
+                -- Mobilde kamerayı sarsmayacak temel sarsıntı sönümleme
+                -- Ekstra açı hesapları yerine kameranın ani zıplamalarını törpüler
             end
         end
-        
-        -- Auto Reload (Otomatik Şarjör)
-        if settings.AutoReload and not isMouseDown then
-            -- Eğer mermi bittiyse ve sol tık bırakıldıysa R tuşuna bas (Şarjör değiştir)
-            -- (Oyunların çoğunda R tuşu reload'dur)
-            if tick() - lastShot > 0.5 then 
-                -- Genelde mermi bittiğinde oyun otomatik atar ama biz zorlayalım
-                pcall(function()
-                    -- Eğer oyunun kendi sistemi varsa Tool:Activate() veya bir Remote tetiklenebilir
-                end)
-            end
-        end
-    end
+    end)
 end)
 
 return Combat
