@@ -1,55 +1,29 @@
--- src/security.lua (Ultra Pro Bypass & Spoofer - Evcilleştirilmiş Sürüm)
--- Sunucu ağ paketlerine (Remote) müdahale kaldırıldı, sadece yerel korumalar kaldı.
-
+-- src/security.lua (Temiz ve Güvenli Bypass - Fizik Kodları Silindi)
 local Security = {}
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 local settings = {
-    -- Koruma Ayarları
     AntiKick = true,
-    AntiFling = true,
-    AntiDestroy = true,
-    HideUI = true,
-    
-    -- Fizik & Hız Spoofer
     WalkSpeedSpoof = true,
     JumpPowerSpoof = true,
-    VelocitySpoof = true
+    HideUI = true
 }
 
 local originalWalkSpeed = 16
 local originalJumpPower = 50
 
--- =====================================================================
--- 1. ANTI-KICK
--- =====================================================================
+-- 1. ANTI-KICK (Seni atmaya çalışırlarsa engeller)
 local oldKick
 oldKick = hookfunction(LocalPlayer.Kick, function(self, message)
     if settings.AntiKick then
-        warn("[Security] Kick engellendi! Sunucu Sebebi: " .. tostring(message))
+        warn("[Security] Kick engellendi!")
         return
     end
     return oldKick(self, message)
 end)
 
--- =====================================================================
--- 2. ANTI-DESTROY
--- =====================================================================
-local oldDestroy
-oldDestroy = hookfunction(Instance.new("ScreenGui").Destroy, function(self)
-    if settings.AntiDestroy then
-        if self:FindFirstChild("NeverloseCS2") or self.Name == "NeverloseCS2" or self.Name == "NeverloseMenu" then
-            return
-        end
-    end
-    return oldDestroy(self)
-end)
-
--- =====================================================================
--- 3. METAMETHOD HOOK (Hız ve Gizlilik Spoofer'ı)
--- =====================================================================
+-- 2. SADECE HIZ VE ZIPLAMA GİZLEME (Sunucu seni 16 hızında sansın)
 local oldIndex
 oldIndex = hookmetamethod(game, "__index", function(self, key)
     if not checkcaller() then
@@ -65,10 +39,11 @@ oldIndex = hookmetamethod(game, "__index", function(self, key)
             end
         end
         
+        -- Arayüzü Gizleme
         if settings.HideUI then
-            if self == game:GetService("CoreGui") and (key == "FindFirstChild" or key == "GetChildren" or key == "GetDescendants") then
+            if self == game:GetService("CoreGui") and (key == "FindFirstChild" or key == "GetChildren") then
                 return function(_, childName)
-                    if childName == "NeverloseCS2" or childName == "NeverloseMenu" then return nil end
+                    if childName == "NeverloseMenu" or childName == "NeverloseMobileBtn" then return nil end
                     return oldIndex(self, key)(self, childName)
                 end
             end
@@ -77,30 +52,7 @@ oldIndex = hookmetamethod(game, "__index", function(self, key)
     return oldIndex(self, key)
 end)
 
--- =====================================================================
--- 4. VELOCITY & FLING SPOOFER
--- =====================================================================
-RunService.Heartbeat:Connect(function()
-    if not settings.VelocitySpoof then return end
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local root = char.HumanoidRootPart
-        
-        if settings.AntiFling and root.AssemblyLinearVelocity.Magnitude > 120 then
-            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-        end
-        
-        if root.AssemblyLinearVelocity.Magnitude > 100 then
-            root.AssemblyLinearVelocity = root.AssemblyLinearVelocity.Unit * 50
-        end
-    end
-end)
-
--- =====================================================================
--- 5. (REMOTE THROTTLER VE SANITIZER KALDIRILDI - OYUNDAN ATMA SEBEBİYDİ)
--- =====================================================================
-
+-- Karakter yenilendiğinde orijinal hızı kaydet
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
     local hum = char:WaitForChild("Humanoid", 5)
