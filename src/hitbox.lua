@@ -1,4 +1,4 @@
--- src/hitbox.lua (Mobil Uyumlu & Güvenli Hitbox Büyütücü)
+-- src/hitbox.lua (Kasmayan & Bellek Sızıntısı Giderilmiş)
 local Hitbox = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -6,7 +6,8 @@ local LocalPlayer = Players.LocalPlayer
 
 local settings = {
     Enabled = false,
-    Size = 2, -- Çarpan (Mobilde aşırı büyük yapmak oyuncuyu buga sokabilir, 2-3 idealdir)
+    Size = 2, 
+    Transparency = false -- Kafayı yarı saydam yap (Görsel)
 }
 
 local expandedParts = {}
@@ -19,11 +20,23 @@ function Hitbox.Toggle(state)
     settings.Enabled = state
     if not state then
         pcall(function()
-            for part, originalSize in pairs(expandedParts) do
-                if part and part.Parent then part.Size = originalSize end
+            for part, data in pairs(expandedParts) do
+                if part and part.Parent then 
+                    part.Size = data.Size 
+                    part.Transparency = data.Transparency
+                end
             end
             expandedParts = {}
         end)
+    end
+end
+
+-- Ölen veya çıkan oyuncuların eski kafa referanslarını temizle (Memory Leak Fix)
+local function cleanupDeadParts()
+    for part, _ in pairs(expandedParts) do
+        if not part or not part.Parent then
+            expandedParts[part] = nil
+        end
     end
 end
 
@@ -44,20 +57,34 @@ RunService.Heartbeat:Connect(function()
                     
                     if head and head:IsA("BasePart") and hum and hum.Health > 0 then
                         if not expandedParts[head] then
-                            expandedParts[head] = head.Size -- Orijinal boyutu güvenle kaydet
+                            -- Orijinal boyut ve şeffaflığı kaydet
+                            expandedParts[head] = {
+                                Size = head.Size,
+                                Transparency = head.Transparency
+                            }
                         end
                         
-                        local original = expandedParts[head]
-                        -- Boyutu güvenli sınırlarda büyüt
-                        local targetSize = Vector3.new(original.X * settings.Size, original.Y * settings.Size, original.Z * settings.Size)
+                        local data = expandedParts[head]
+                        local targetSize = Vector3.new(data.Size.X * settings.Size, data.Size.Y * settings.Size, data.Size.Z * settings.Size)
+                        
                         if head.Size ~= targetSize then
                             head.Size = targetSize
-                            head.Transparency = 0.5 -- İsteğe bağlı: büyüyen kafayı yarı şeffaf yapar
                             head.CanCollide = false
+                            
+                            if settings.Transparency then
+                                head.Transparency = 0.5
+                            else
+                                head.Transparency = data.Transparency
+                            end
                         end
                     end
                 end
             end
+        end
+        
+        -- Her 1 saniyede bir (yaklaşık) ölü parçaları temizle
+        if tick() % 1 < 0.02 then
+            cleanupDeadParts()
         end
     end)
 end)
