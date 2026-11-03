@@ -1,4 +1,4 @@
--- src/esp.lua (ULTRA SÜRÜM - Silah Görme, Weapon Chams ve Dahası)
+-- src/esp.lua (ULTRA SÜRÜM - Kendi Silahın Parlıyor)
 local ESP = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -29,13 +29,15 @@ local settings = {
     HealthEnabled = true,
     HealthTextEnabled = true,
     
-    -- Silah Ayarları
+    -- Düşman Silah Ayarları (Yazı ve Kutu)
     WeaponTextEnabled = true,
     WeaponTextColor = Color3.fromRGB(255, 255, 100),
     WeaponBoxEnabled = true,
     WeaponBoxColor = Color3.fromRGB(255, 150, 0),
-    WeaponChamsEnabled = true,
-    WeaponChamsColor = Color3.fromRGB(0, 255, 255),
+    
+    -- BİZİM SİLAHIMIZ (Local Weapon Chams)
+    LocalWeaponChamsEnabled = false,
+    LocalWeaponChamsColor = Color3.fromRGB(0, 255, 255), -- Varsayılan Mavi
     
     -- Gelişmiş Görseller
     SkeletonEnabled = true,
@@ -52,7 +54,7 @@ local settings = {
     TracerOrigin = "Bottom", -- "Top", "Bottom", "Mouse"
     TracerColor = Color3.fromRGB(255, 255, 0),
     
-    -- Chams (Vücut)
+    -- Chams (Düşman Vücudu)
     ChamsEnabled = false,
     ChamsVisibleColor = Color3.fromRGB(255, 0, 255),
     ChamsOccludedColor = Color3.fromRGB(255, 255, 255),
@@ -61,7 +63,7 @@ local settings = {
 
 local drawings = {}
 local highlights = {}
-local weaponHighlights = {}
+local weaponHighlights = {} -- Kendi silahımız için
 
 local skeletonConnections = {
     {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"LowerTorso", "HumanoidRootPart"},
@@ -118,17 +120,17 @@ local function clearPlayerDrawings(player)
         if highlights[player].Parent then pcall(function() highlights[player]:Destroy() end) end
         highlights[player] = nil
     end
-    if weaponHighlights[player] then
-        for _, hl in pairs(weaponHighlights[player]) do
-            if hl and hl.Parent then pcall(function() hl:Destroy() end) end
-        end
-        weaponHighlights[player] = nil
-    end
 end
 
 local function clearAll()
     for player, _ in pairs(drawings) do clearPlayerDrawings(player) end
-    drawings = {}; highlights = {}; weaponHighlights = {}
+    if weaponHighlights[LocalPlayer] then
+        for _, hl in pairs(weaponHighlights[LocalPlayer]) do
+            if hl and hl.Parent then pcall(function() hl:Destroy() end) end
+        end
+        weaponHighlights[LocalPlayer] = nil
+    end
+    drawings = {}; highlights = {}
 end
 
 function ESP.Set(key, value)
@@ -153,6 +155,44 @@ RunService.RenderStepped:Connect(function()
     local mousePos = UserInputService:GetMouseLocation()
     local activePlayers = {}
 
+    -- ==========================================
+    -- 1. BİZİM SİLAHIMIZ (LOCAL WEAPON CHAMS)
+    -- ==========================================
+    local myTool = localChar:FindFirstChildOfClass("Tool")
+    if myTool then
+        if settings.LocalWeaponChamsEnabled then
+            if not weaponHighlights[LocalPlayer] then weaponHighlights[LocalPlayer] = {} end
+            for _, part in ipairs(myTool:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if not weaponHighlights[LocalPlayer][part] then
+                        local hl = Instance.new("Highlight")
+                        hl.Adornee = part
+                        hl.Parent = part
+                        weaponHighlights[LocalPlayer][part] = hl
+                    end
+                    local hl = weaponHighlights[LocalPlayer][part]
+                    hl.FillColor = settings.LocalWeaponChamsColor
+                    hl.OutlineColor = settings.LocalWeaponChamsColor
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                end
+            end
+        elseif weaponHighlights[LocalPlayer] then
+            for _, hl in pairs(weaponHighlights[LocalPlayer]) do
+                if hl and hl.Parent then hl:Destroy() end
+            end
+            weaponHighlights[LocalPlayer] = nil
+        end
+    elseif weaponHighlights[LocalPlayer] then
+        for _, hl in pairs(weaponHighlights[LocalPlayer]) do
+            if hl and hl.Parent then hl:Destroy() end
+        end
+        weaponHighlights[LocalPlayer] = nil
+    end
+
+
+    -- ==========================================
+    -- 2. DÜŞMANLAR (ESP & CHAMS)
+    -- ==========================================
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local char = player.Character
@@ -164,7 +204,7 @@ RunService.RenderStepped:Connect(function()
             if hrp and head and humanoid and humanoid.Health > 0 and not isTeammate then
                 activePlayers[player] = true
                 
-                -- Chams
+                -- Düşman Chams
                 if settings.ChamsEnabled then
                     if not highlights[player] then
                         local hl = Instance.new("Highlight")
@@ -180,33 +220,6 @@ RunService.RenderStepped:Connect(function()
                 elseif highlights[player] then
                     pcall(function() highlights[player]:Destroy() end)
                     highlights[player] = nil
-                end
-
-                -- Weapon Chams (Sadece Kendi Silahın İçin Ayarlanmıştı, Buraya Düşman İçin Ekliyoruz)
-                if settings.WeaponChamsEnabled then
-                    local tool = char:FindFirstChildOfClass("Tool")
-                    if tool then
-                        if not weaponHighlights[player] then weaponHighlights[player] = {} end
-                        for _, part in ipairs(tool:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                if not weaponHighlights[player][part] then
-                                    local hl = Instance.new("Highlight")
-                                    hl.Adornee = part
-                                    hl.Parent = part
-                                    weaponHighlights[player][part] = hl
-                                end
-                                local hl = weaponHighlights[player][part]
-                                hl.FillColor = settings.WeaponChamsColor
-                                hl.OutlineColor = settings.WeaponChamsColor
-                                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                            end
-                        end
-                    elseif weaponHighlights[player] then
-                        for _, hl in pairs(weaponHighlights[player]) do
-                            if hl and hl.Parent then hl:Destroy() end
-                        end
-                        weaponHighlights[player] = nil
-                    end
                 end
 
                 local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
@@ -296,7 +309,7 @@ RunService.RenderStepped:Connect(function()
                     d.dist.Position = Vector2.new(pos.X, y + height + 4)
                     d.dist.Text = math.floor((localPos - hrp.Position).Magnitude) .. "m"
                     
-                    -- SİLAH 2D KUTU VE YAZI
+                    -- SİLAH 2D KUTU VE YAZI (Düşman için)
                     if not d.weaponText then
                         d.weaponText = createDrawing("Text", { Size = 12, Center = true, Outline = true })
                         d.weaponBox = createDrawing("Square", { Thickness = 1, Filled = false })
