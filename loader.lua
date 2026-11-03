@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SIRALI VE TEMİZ LOADER (Önce Bypass, Sonra Modüller, En Son Menü)
+-- ULTIMATE SIRALI LOADER (Bypass -> Modüller -> Menü)
 -- ==============================================================================
 local CONFIG = {
     User = "cukubombaci-code",
@@ -26,7 +26,7 @@ local function fetchAndCompile(fileName)
     
     local runSuccess, runResult = pcall(chunk)
     if not runSuccess then
-        warn("[Loader] Calisma Hatasi: " .. fileName)
+        warn("[Loader] Hata: " .. fileName)
         return nil
     end
     
@@ -34,23 +34,22 @@ local function fetchAndCompile(fileName)
     return runResult
 end
 
--- 1. ADIM: BYPASS (GÜVENLİK KORUMASI)
+-- 1. BYPASS
 print("[Loader] 1. Adim: Bypass Yukleniyor...")
 fetchAndCompile("security")
-task.wait(0.5) -- Telefonun nefes alması için bekle
+task.wait(0.4)
 collectgarbage("collect")
 
--- 2. ADIM: MODÜLLER (ESP, AIMBOT VS)
+-- 2. MODÜLLER
 print("[Loader] 2. Adim: Moduller Yukleniyor...")
 local modules = {"aimbot", "ragebot", "anti-aim", "combat", "esp", "hitbox", "hitsound", "movement", "triggerbot", "world"}
 for _, modName in ipairs(modules) do
     fetchAndCompile(modName)
-    task.wait(0.15) -- Kasma yapmaması için araya süre koyuyoruz
+    task.wait(0.1)
     collectgarbage("collect")
 end
 
--- 3. ADIM: MENÜ (ARAYÜZ)
+-- 3. MENÜ
 print("[Loader] 3. Adim: Menu Yukleniyor...")
 fetchAndCompile("menu")
-
-print("[Loader] BASARILI! Sistem hazir.")
+print("[Loader] TAMAMLANDI!")
