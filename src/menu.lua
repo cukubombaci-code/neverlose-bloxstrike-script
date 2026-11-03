@@ -1,11 +1,11 @@
 -- ==============================================================================
--- ULTRA HAFIF VE TAM AYARLANABİLİR MENÜ (Sıfır Kütüphane)
+-- NEVERLOSE MOBILE MENÜ (Sadece Arayüz - Sıfır Kütüphane)
 -- ==============================================================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Güvenli Fonksiyon Çağırıcı (Modüller henüz yüklenmediyse hata vermesini engeller)
+-- Modülleri güvenli çağırma (Modül yoksa çökmez)
 local function SafeCall(moduleName, methodName, ...)
     local NL = getgenv().Neverlose
     if NL and NL[moduleName] and type(NL[moduleName][methodName]) == "function" then
@@ -13,36 +13,33 @@ local function SafeCall(moduleName, methodName, ...)
     end
 end
 
--- ==============================================================================
--- ARAYÜZ OLUŞTURMA
--- ==============================================================================
+-- Arayüz
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "UltraLightMenu"
+ScreenGui.Name = "NeverloseMenuUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 -- Ana Çerçeve
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 340, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -170, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 320, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(255, 0, 255)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(255, 0, 255)
 
--- Başlık Çubuğu
+-- Başlık
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-Title.Text = "Neverlose | Light"
+Title.Text = "Neverlose | Mobile"
 Title.TextColor3 = Color3.fromRGB(255, 0, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
 Title.Parent = MainFrame
-Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 10)
 
 -- Kapat Butonu
 local CloseBtn = Instance.new("TextButton")
@@ -56,23 +53,23 @@ CloseBtn.TextSize = 15
 CloseBtn.Parent = MainFrame
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
--- Sekme Çubuğu (Tabs)
+-- Sekmeler (Tabs)
 local TabBar = Instance.new("Frame")
 TabBar.Size = UDim2.new(1, -10, 0, 30)
-TabBar.Position = UDim2.new(0, 5, 0, 40)
+TabBar.Position = UDim2.new(0, 5, 0, 42)
 TabBar.BackgroundTransparency = 1
 TabBar.Parent = MainFrame
 Instance.new("UIListLayout", TabBar).FillDirection = Enum.FillDirection.Horizontal
 Instance.new("UIListLayout", TabBar).Padding = UDim.new(0, 4)
 
 -- İçerik Alanı
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1, -10, 1, -75)
-ContentFrame.Position = UDim2.new(0, 5, 0, 75)
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.Parent = MainFrame
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, -10, 1, -80)
+Content.Position = UDim2.new(0, 5, 0, 78)
+Content.BackgroundTransparency = 1
+Content.Parent = MainFrame
 
--- Sayfalar (ScrollingFrame)
+-- Sayfa Oluşturucu
 local Pages = {}
 local function CreatePage(name)
     local scroll = Instance.new("ScrollingFrame")
@@ -82,15 +79,13 @@ local function CreatePage(name)
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.ScrollBarThickness = 3
     scroll.Visible = false
-    scroll.Parent = ContentFrame
+    scroll.Parent = Content
     Instance.new("UIListLayout", scroll).Padding = UDim.new(0, 6)
     Pages[name] = scroll
     return scroll
 end
 
--- ==============================================================================
--- UI ELEMANLARI (Butonlar)
--- ==============================================================================
+-- UI Elemanları
 local function CreateHeader(parent, text)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, 0, 0, 24)
@@ -106,7 +101,6 @@ local function CreateToggle(parent, name, default, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 34)
     btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    
     local enabled = default
     btn.Text = (enabled and "  [ON] " or "  [OFF] ") .. name
     btn.TextColor3 = enabled and Color3.fromRGB(0, 255, 128) or Color3.fromRGB(200, 200, 200)
@@ -120,7 +114,7 @@ local function CreateToggle(parent, name, default, callback)
         enabled = not enabled
         btn.Text = (enabled and "  [ON] " or "  [OFF] ") .. name
         btn.TextColor3 = enabled and Color3.fromRGB(0, 255, 128) or Color3.fromRGB(200, 200, 200)
-        if callback then callback(enabled) end
+        if callback then pcall(callback, enabled) end
     end)
 end
 
@@ -141,7 +135,7 @@ local function CreateSlider(parent, name, min, max, default, step, callback)
         currentVal = currentVal + step
         if currentVal > max then currentVal = min end
         btn.Text = "  " .. name .. " : " .. tostring(currentVal)
-        if callback then callback(currentVal) end
+        if callback then pcall(callback, currentVal) end
     end)
 end
 
@@ -162,7 +156,7 @@ local function CreateDropdown(parent, name, options, callback)
         currentIndex = currentIndex + 1
         if currentIndex > #options then currentIndex = 1 end
         btn.Text = "  " .. name .. " : " .. options[currentIndex]
-        if callback then callback(options[currentIndex]) end
+        if callback then pcall(callback, options[currentIndex]) end
     end)
 end
 
@@ -194,20 +188,20 @@ local function CreateColorPicker(parent, name, callback)
         if currentIndex > #names then currentIndex = 1 end
         btn.Text = "  " .. name .. " : " .. names[currentIndex]
         btn.TextColor3 = colors[names[currentIndex]]
-        if callback then callback(colors[names[currentIndex]]) end
+        if callback then pcall(callback, colors[names[currentIndex]]) end
     end)
 end
 
 -- ==============================================================================
--- SAYFALARI DOLDURMA (Tüm Ayarlar)
+-- SAYFA İÇERİKLERİ
 -- ==============================================================================
 
 -- 1. RAGE
 local RagePage = CreatePage("Rage")
 CreateHeader(RagePage, "RAGEBOT")
 CreateToggle(RagePage, "Enable Ragebot", false, function(s) SafeCall("ragebot", "Toggle", s) end)
-CreateSlider(RagePage, "Rage FOV", 10, 360, 360, 10, function(v) SafeCall("ragebot", "Set", "FOV", v) end)
-CreateDropdown(RagePage, "Rage Hitbox", {"Head", "Chest"}, function(v) SafeCall("ragebot", "Set", "Hitbox", v) end)
+CreateSlider(RagePage, "FOV", 10, 360, 360, 10, function(v) SafeCall("ragebot", "Set", "FOV", v) end)
+CreateDropdown(RagePage, "Hitbox", {"Head", "Chest"}, function(v) SafeCall("ragebot", "Set", "Hitbox", v) end)
 CreateToggle(RagePage, "Auto Fire", true, function(s) SafeCall("ragebot", "Set", "AutoFire", s) end)
 CreateHeader(RagePage, "ANTI-AIM")
 CreateToggle(RagePage, "Enable Anti-Aim", false, function(s) SafeCall("anti-aim", "Toggle", s) end)
@@ -238,10 +232,9 @@ CreateHeader(VisPage, "CHAMS")
 CreateToggle(VisPage, "Enable Player Chams", false, function(s) SafeCall("esp", "Set", "ChamsEnabled", s) end)
 CreateColorPicker(VisPage, "Chams Color", function(c) SafeCall("esp", "Set", "ChamsVisibleColor", c) end)
 CreateToggle(VisPage, "Enable Weapon Chams", false, function(s) SafeCall("esp", "Set", "LocalWeaponChamsEnabled", s) end)
-CreateColorPicker(VisPage, "Weapon Chams Color", function(c) SafeCall("esp", "Set", "LocalWeaponChamsColor", c) end)
 
 -- 4. MOVEMENT
-local MovePage = CreatePage("Movement")
+local MovePage = CreatePage("Move")
 CreateHeader(MovePage, "BUNNYHOP")
 CreateToggle(MovePage, "Enable Bhop", false, function(s) SafeCall("movement", "Set", "BhopEnabled", s) end)
 CreateSlider(MovePage, "Bhop Speed", 16, 200, 50, 10, function(v) SafeCall("movement", "Set", "BhopSpeed", v) end)
@@ -249,37 +242,16 @@ CreateHeader(MovePage, "AIR STRAFE")
 CreateToggle(MovePage, "Enable Air Strafe", false, function(s) SafeCall("movement", "Set", "AirStrafeEnabled", s) end)
 CreateSlider(MovePage, "Air Power", 16, 200, 50, 10, function(v) SafeCall("movement", "Set", "AirStrafeSpeed", v) end)
 
--- 5. COMBAT
-local CombatPage = CreatePage("Combat")
-CreateHeader(CombatPage, "WEAPON MODS")
-CreateToggle(CombatPage, "Enable Combat", false, function(s) SafeCall("combat", "Toggle", s) end)
-CreateToggle(CombatPage, "Rapid Fire", false, function(s) SafeCall("combat", "Set", "RapidFire", s) end)
-CreateSlider(CombatPage, "Fire Rate (ms)", 10, 500, 60, 10, function(v) SafeCall("combat", "Set", "FireRate", v) end)
-CreateToggle(CombatPage, "No Recoil", false, function(s) SafeCall("combat", "Set", "NoRecoil", s) end)
-CreateHeader(CombatPage, "EXTRA")
-CreateToggle(CombatPage, "Hitbox Expander", false, function(s) SafeCall("hitbox", "Toggle", s) end)
-CreateToggle(CombatPage, "Hit Sound", false, function(s) SafeCall("hitsound", "Toggle", s) end)
-
--- ==============================================================================
--- SEKME GEÇİŞ MANTIĞI
--- ==============================================================================
-local Tabs = {
-    ["Rage"] = RagePage,
-    ["Legit"] = LegitPage,
-    ["Visuals"] = VisPage,
-    ["Move"] = MovePage,
-    ["Combat"] = CombatPage
-}
-
+-- Sekme Geçiş Mantığı
 local function SwitchTab(tabName)
     for name, page in pairs(Pages) do
         page.Visible = (name == tabName)
     end
 end
 
-for tabName, _ in pairs(Tabs) do
+for tabName, _ in pairs(Pages) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.19, 0, 1, 0)
+    btn.Size = UDim2.new(0.24, 0, 1, 0)
     btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     btn.Text = tabName
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -287,15 +259,12 @@ for tabName, _ in pairs(Tabs) do
     btn.TextSize = 11
     btn.Parent = TabBar
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
     btn.MouseButton1Click:Connect(function() SwitchTab(tabName) end)
 end
 
 SwitchTab("Rage")
 
--- ==============================================================================
--- SAĞ ALT BUTON (FAB) VE SÜRÜKLEME
--- ==============================================================================
+-- Sağ Alt Yuvarlak Buton
 local FAB = Instance.new("TextButton")
 FAB.Size = UDim2.fromOffset(55, 55)
 FAB.Position = UDim2.new(1, -75, 1, -110)
@@ -308,29 +277,6 @@ FAB.Parent = ScreenGui
 Instance.new("UICorner", FAB).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", FAB).Color = Color3.fromRGB(255, 0, 255)
 
-local dragging, dragInput, dragStart, startPos
-FAB.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = FAB.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
-end)
-FAB.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        FAB.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
 FAB.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
-
-return { Status = "Menu Loaded" }
