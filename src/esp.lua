@@ -1,349 +1,292 @@
--- src/esp.lua (Mobil Uyumlu & Güvenli Ultra Sürüm)
-local ESP = {}
+-- ==============================================================================
+-- NEVERLOSE ULTIMATE ESP (Kutu, Tracer, Chams, Weapon Chams, HP, İsim, Mesafe)
+-- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Ayarlar (Menüden değiştirilebilir)
 local settings = {
-    MasterEnabled = false,
-    TeamCheck = true,
-    BoxEnabled = true,
-    BoxStyle = "Normal", -- "Normal" veya "Corner"
-    BoxFilled = false,
-    BoxColor = Color3.fromRGB(255, 50, 50),
-    NameEnabled = true,
-    NameColor = Color3.fromRGB(255, 255, 255),
-    DistanceEnabled = true,
-    DistanceColor = Color3.fromRGB(200, 200, 200),
-    HealthEnabled = true,
-    SkeletonEnabled = false,
-    SkeletonColor = Color3.fromRGB(255, 255, 255),
-    HeadDotEnabled = true,
-    HeadDotColor = Color3.fromRGB(255, 255, 255),
-    WeaponTextEnabled = true,
-    WeaponTextColor = Color3.fromRGB(255, 255, 100),
-    WeaponBoxEnabled = true,
-    WeaponBoxColor = Color3.fromRGB(255, 150, 0),
-    LocalWeaponChamsEnabled = false,
-    LocalWeaponChamsColor = Color3.fromRGB(0, 255, 255),
-    TracerEnabled = false,
-    TracerColor = Color3.fromRGB(255, 255, 0),
-    ChamsEnabled = false,
-    ChamsColor = Color3.fromRGB(255, 0, 255),
+    ESP = true,
+    Tracers = true,
+    Chams = true,
+    WeaponChams = true
 }
 
-local drawings = {}
-local highlights = {}
+-- Çizim Objeleri Havuzu
+local espDrawings = {}
+local enemyHighlights = {}
 local weaponHighlights = {}
 
-local skeletonConnections = {
-    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"LowerTorso", "HumanoidRootPart"},
-    {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
-    {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
-    {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
-    {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
-    {"Head", "Torso"}, {"Torso", "HumanoidRootPart"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"}, {"Torso", "Left Leg"}, {"Torso", "Right Leg"}
-}
+-- ==============================================================================
+-- MENÜ (Mobil Uyumlu)
+-- ==============================================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NeverloseUltimateESP"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
 
-local function createDrawing(class, props)
-    local ok, obj = pcall(Drawing.new, class)
-    if not ok then return nil end
-    for k, v in pairs(props) do pcall(function() obj[k] = v end) end
-    return obj
-end
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(255, 0, 255)
 
-local function createCornerBox(color)
-    local lines = {}
-    for i = 1, 8 do
-        table.insert(lines, createDrawing("Line", { Color = color, Thickness = 1, Visible = false }))
-    end
-    return lines
-end
+local FAB = Instance.new("TextButton")
+FAB.Size = UDim2.fromOffset(50, 50)
+FAB.Position = UDim2.new(1, -70, 1, -100)
+FAB.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+FAB.Text = "ESP"
+FAB.TextColor3 = Color3.fromRGB(255, 255, 255)
+FAB.Font = Enum.Font.GothamBold
+FAB.TextSize = 14
+FAB.Parent = ScreenGui
+Instance.new("UICorner", FAB).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", FAB).Color = Color3.fromRGB(255, 0, 255)
 
-local function updateCornerBox(lines, x, y, w, h)
-    if #lines < 8 then return end
-    local lenW = w * 0.2
-    local lenH = h * 0.2
-    lines[1].From = Vector2.new(x, y); lines[1].To = Vector2.new(x + lenW, y)
-    lines[2].From = Vector2.new(x, y); lines[2].To = Vector2.new(x, y + lenH)
-    lines[3].From = Vector2.new(x + w, y); lines[3].To = Vector2.new(x + w - lenW, y)
-    lines[4].From = Vector2.new(x + w, y); lines[4].To = Vector2.new(x + w, y + lenH)
-    lines[5].From = Vector2.new(x, y + h); lines[5].To = Vector2.new(x + lenW, y + h)
-    lines[6].From = Vector2.new(x, y + h); lines[6].To = Vector2.new(x, y + h - lenH)
-    lines[7].From = Vector2.new(x + w, y + h); lines[7].To = Vector2.new(x + w - lenW, y + h)
-    lines[8].From = Vector2.new(x + w, y + h); lines[8].To = Vector2.new(x + w, y + h - lenH)
-    for _, line in ipairs(lines) do line.Visible = true end
-end
-
-local function clearPlayerDrawings(player)
-    if drawings[player] then
-        for _, d in pairs(drawings[player]) do
-            if type(d) == "table" then
-                for _, sub in pairs(d) do pcall(function() if sub.Remove then sub:Remove() end end) end
-            else
-                pcall(function() if d.Remove then d:Remove() end end)
-            end
-        end
-        drawings[player] = nil
-    end
-    if highlights[player] then
-        pcall(function() highlights[player]:Destroy() end)
-        highlights[player] = nil
-    end
-end
-
-local function clearAll()
-    for player, _ in pairs(drawings) do clearPlayerDrawings(player) end
-    if weaponHighlights[LocalPlayer] then
-        for _, hl in pairs(weaponHighlights[LocalPlayer]) do pcall(function() hl:Destroy() end) end
-        weaponHighlights[LocalPlayer] = nil
-    end
-    drawings = {}; highlights = {}
-end
-
-function ESP.Set(key, value)
-    if settings[key] ~= nil then settings[key] = value end
-end
-
-function ESP.Toggle(state)
-    settings.MasterEnabled = state
-    if not state then clearAll() end
-end
-
-RunService.RenderStepped:Connect(function()
-    if not settings.MasterEnabled then return end
-    local localChar = LocalPlayer.Character
-    local localHRP = localChar and localChar:FindFirstChild("HumanoidRootPart")
-    if not localHRP then return end
+local function createBtn(text, yPos, defaultState, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 32)
+    btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    btn.BackgroundColor3 = defaultState and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(30, 30, 40)
+    btn.Text = text .. (defaultState and ": ON" or ": OFF")
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.Parent = MainFrame
     
-    local localPos = localHRP.Position
-    local myTeam = LocalPlayer.Team
-    local activePlayers = {}
+    local state = defaultState
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = text .. (state and ": ON" or ": OFF")
+        btn.BackgroundColor3 = state and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(30, 30, 40)
+        callback(state)
+    end)
+end
 
-    -- 1. KENDİ SİLAHIMIZIN PARLAMASI (Local Weapon Chams)
+createBtn("Player ESP", 10, settings.ESP, function(s) settings.ESP = s end)
+createBtn("Tracers", 50, settings.Tracers, function(s) settings.Tracers = s end)
+createBtn("Enemy Chams", 90, settings.Chams, function(s) settings.Chams = s end)
+createBtn("Weapon Chams", 130, settings.WeaponChams, function(s) settings.WeaponChams = s end)
+
+FAB.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+-- ==============================================================================
+-- TEMİZLİK FONKSİYONU (Bellek Sızıntısını Engeller)
+-- ==============================================================================
+local function cleanupESP(player)
+    if espDrawings[player] then
+        for _, obj in pairs(espDrawings[player]) do
+            if obj and obj.Remove then obj:Remove() end
+        end
+        espDrawings[player] = nil
+    end
+    if enemyHighlights[player] then
+        pcall(function() enemyHighlights[player]:Destroy() end)
+        enemyHighlights[player] = nil
+    end
+end
+
+-- ==============================================================================
+-- ANA DÖNGÜ
+-- ==============================================================================
+RunService.RenderStepped:Connect(function()
     pcall(function()
+        local localChar = LocalPlayer.Character
+        if not localChar or not localChar:FindFirstChild("HumanoidRootPart") then return end
+        
+        -- 1. WEAPON CHAMS (Kendi Silahımız)
         local myTool = localChar:FindFirstChildOfClass("Tool")
-        if myTool and settings.LocalWeaponChamsEnabled then
+        if settings.WeaponChams and myTool then
             if not weaponHighlights[LocalPlayer] then weaponHighlights[LocalPlayer] = {} end
             for _, part in ipairs(myTool:GetDescendants()) do
                 if part:IsA("BasePart") then
                     if not weaponHighlights[LocalPlayer][part] then
                         local hl = Instance.new("Highlight")
                         hl.Adornee = part
+                        hl.FillColor = Color3.fromRGB(0, 255, 255)
+                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                         hl.Parent = part
                         weaponHighlights[LocalPlayer][part] = hl
                     end
-                    local hl = weaponHighlights[LocalPlayer][part]
-                    hl.FillColor = settings.LocalWeaponChamsColor
-                    hl.OutlineColor = settings.LocalWeaponChamsColor
-                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                 end
             end
         elseif weaponHighlights[LocalPlayer] then
-            for _, hl in pairs(weaponHighlights[LocalPlayer]) do pcall(function() hl:Destroy() end) end
+            for _, hl in pairs(weaponHighlights[LocalPlayer]) do
+                pcall(function() hl:Destroy() end)
+            end
             weaponHighlights[LocalPlayer] = nil
         end
-    end)
 
-    -- 2. DÜŞMANLAR
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local char = player.Character
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local head = char:FindFirstChild("Head")
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            local isTeammate = settings.TeamCheck and (player.Team == myTeam) and myTeam ~= nil
-
-            if hrp and head and humanoid and humanoid.Health > 0 and not isTeammate then
-                activePlayers[player] = true
+        -- 2. DÜŞMANLAR (ESP, Tracer, Chams)
+        local activePlayers = {}
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local char = player.Character
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local head = char:FindFirstChild("Head")
+                local hum = char:FindFirstChildOfClass("Humanoid")
                 
-                -- Chams
-                pcall(function()
-                    if settings.ChamsEnabled then
-                        if not highlights[player] then
+                -- Takım kontrolü
+                local isTeammate = player.Team == LocalPlayer.Team and LocalPlayer.Team ~= nil
+                
+                if hrp and head and hum and hum.Health > 0 and not isTeammate then
+                    
+                    -- CHAMS (Vücut)
+                    if settings.Chams then
+                        if not enemyHighlights[player] then
                             local hl = Instance.new("Highlight")
                             hl.Adornee = char
-                            hl.FillColor = settings.ChamsColor
-                            hl.OutlineColor = settings.ChamsColor
+                            hl.FillColor = Color3.fromRGB(255, 0, 255)
+                            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            hl.FillTransparency = 0.4
+                            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                             hl.Parent = char
-                            highlights[player] = hl
+                            enemyHighlights[player] = hl
                         end
-                    elseif highlights[player] then
-                        highlights[player]:Destroy()
-                        highlights[player] = nil
-                    end
-                end)
-
-                local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-                local tool = char:FindFirstChildOfClass("Tool")
-                
-                if onScreen then
-                    local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-                    local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                    
-                    local height = math.abs(headPos.Y - legPos.Y)
-                    local width = height / 2
-                    local x = pos.X - width / 2
-                    local y = headPos.Y
-                    
-                    if not drawings[player] then drawings[player] = {} end
-                    local d = drawings[player]
-                    
-                    -- Kutu (Corner veya Normal)
-                    if not d.box then
-                        d.box = createDrawing("Square", { Color = settings.BoxColor, Thickness = 1, Filled = false })
-                        d.cornerBox = createCornerBox(settings.BoxColor)
-                        d.fill = createDrawing("Square", { Color = settings.BoxColor, Filled = true, Transparency = 0.6 })
-                    end
-                    
-                    if settings.BoxStyle == "Corner" then
-                        if d.box then d.box.Visible = false end
-                        if d.fill then d.fill.Visible = false end
-                        updateCornerBox(d.cornerBox, x, y, width, height)
-                        for _, line in ipairs(d.cornerBox) do line.Color = settings.BoxColor end
-                    else
-                        for _, line in ipairs(d.cornerBox) do line.Visible = false end
-                        if d.box then
-                            d.box.Color = settings.BoxColor
-                            d.box.Visible = settings.BoxEnabled
-                            d.box.Position = Vector2.new(x, y)
-                            d.box.Size = Vector2.new(width, height)
-                        end
-                        if d.fill then
-                            d.fill.Color = settings.BoxColor
-                            d.fill.Visible = settings.BoxFilled
-                            d.fill.Position = Vector2.new(x, y)
-                            d.fill.Size = Vector2.new(width, height)
-                        end
-                    end
-                    
-                    -- Kafa Noktası
-                    if not d.headDot then d.headDot = createDrawing("Circle", { Color = settings.HeadDotColor, Thickness = 1, Filled = true, Radius = 3 }) end
-                    if d.headDot then
-                        d.headDot.Color = settings.HeadDotColor
-                        d.headDot.Visible = settings.HeadDotEnabled
-                        d.headDot.Position = Vector2.new(pos.X, y)
-                    end
-                    
-                    -- İsim ve Mesafe
-                    if not d.name then
-                        d.name = createDrawing("Text", { Color = settings.NameColor, Size = 13, Center = true, Outline = true })
-                        d.dist = createDrawing("Text", { Color = settings.DistanceColor, Size = 11, Center = true, Outline = true })
-                    end
-                    if d.name then
-                        d.name.Visible = settings.NameEnabled
-                        d.name.Position = Vector2.new(pos.X, y - 15)
-                        d.name.Text = player.Name
-                    end
-                    if d.dist then
-                        d.dist.Visible = settings.DistanceEnabled
-                        d.dist.Position = Vector2.new(pos.X, y + height + 2)
-                        d.dist.Text = math.floor((localPos - hrp.Position).Magnitude) .. "m"
-                    end
-                    
-                    -- SİLAH KUTUSU VE YAZISI
-                    if not d.weaponText then
-                        d.weaponText = createDrawing("Text", { Size = 12, Center = true, Outline = true })
-                        d.weaponBox = createDrawing("Square", { Thickness = 1, Filled = false })
-                    end
-                    if tool then
-                        local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
-                        if handle then
-                            local wPos, wOnScreen = Camera:WorldToViewportPoint(handle.Position)
-                            if wOnScreen and d.weaponBox then
-                                d.weaponBox.Color = settings.WeaponBoxColor
-                                d.weaponBox.Visible = settings.WeaponBoxEnabled
-                                d.weaponBox.Position = Vector2.new(wPos.X - 10, wPos.Y - 10)
-                                d.weaponBox.Size = Vector2.new(20, 20)
-                            elseif d.weaponBox then
-                                d.weaponBox.Visible = false
-                            end
-                        end
-                        if d.weaponText then
-                            d.weaponText.Color = settings.WeaponTextColor
-                            d.weaponText.Visible = settings.WeaponTextEnabled
-                            d.weaponText.Position = Vector2.new(pos.X, y + height + 18)
-                            d.weaponText.Text = "[" .. tool.Name .. "]"
-                        end
-                    elseif d.weaponText then
-                        d.weaponText.Visible = false
-                        d.weaponBox.Visible = false
+                    elseif enemyHighlights[player] then
+                        pcall(function() enemyHighlights[player]:Destroy() end)
+                        enemyHighlights[player] = nil
                     end
 
-                    -- Can Barı
-                    if not d.healthBar then
-                        d.healthBg = createDrawing("Square", { Color = Color3.fromRGB(20, 20, 20), Filled = true })
-                        d.healthBar = createDrawing("Square", { Color = Color3.fromRGB(0, 255, 0), Filled = true })
-                    end
-                    if d.healthBar and d.healthBg then
-                        d.healthBg.Visible = settings.HealthEnabled
-                        d.healthBar.Visible = settings.HealthEnabled
-                        if settings.HealthEnabled then
-                            local hp = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                            d.healthBg.Position = Vector2.new(x - 6, y)
-                            d.healthBg.Size = Vector2.new(3, height)
-                            d.healthBar.Position = Vector2.new(x - 6, y + height - (height * hp))
-                            d.healthBar.Size = Vector2.new(3, height * hp)
-                            if hp > 0.6 then d.healthBar.Color = Color3.fromRGB(0, 255, 0)
-                            elseif hp > 0.3 then d.healthBar.Color = Color3.fromRGB(255, 255, 0)
-                            else d.healthBar.Color = Color3.fromRGB(255, 0, 0) end
-                        end
-                    end
-                    
-                    -- Tracer
-                    if not d.tracer then d.tracer = createDrawing("Line", { Thickness = 1, Transparency = 0.5 }) end
-                    if d.tracer then
-                        d.tracer.Visible = settings.TracerEnabled
-                        d.tracer.Color = settings.TracerColor
-                        d.tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                        d.tracer.To = Vector2.new(pos.X, y + (height / 2))
-                    end
-                    
-                    -- İskelet
-                    if not d.skeleton then d.skeleton = {} end
-                    if settings.SkeletonEnabled then
-                        local lineIdx = 1
-                        for _, conn in ipairs(skeletonConnections) do
-                            local part1 = char:FindFirstChild(conn[1])
-                            local part2 = char:FindFirstChild(conn[2])
-                            if part1 and part2 then
-                                local p1, on1 = Camera:WorldToViewportPoint(part1.Position)
-                                local p2, on2 = Camera:WorldToViewportPoint(part2.Position)
-                                if on1 or on2 then
-                                    if not d.skeleton[lineIdx] then d.skeleton[lineIdx] = createDrawing("Line", { Thickness = 1, Transparency = 0.4 }) end
-                                    local line = d.skeleton[lineIdx]
-                                    line.Color = settings.SkeletonColor
-                                    line.From = Vector2.new(p1.X, p1.Y)
-                                    line.To = Vector2.new(p2.X, p2.Y)
-                                    line.Visible = true
-                                    lineIdx = lineIdx + 1
-                                end
+                    -- ESP (Kutu, İsim, Can, Tracer)
+                    if settings.ESP then
+                        -- WorldToScreenPoint: Çentik/İnset sorununu %100 çözer
+                        local pos, onScreen = Camera:WorldToScreenPoint(hrp.Position)
+                        
+                        if onScreen then
+                            activePlayers[player] = true
+                            
+                            if not espDrawings[player] then
+                                espDrawings[player] = {
+                                    Box = Drawing.new("Square"),
+                                    Name = Drawing.new("Text"),
+                                    Dist = Drawing.new("Text"),
+                                    HPBg = Drawing.new("Square"),
+                                    HP = Drawing.new("Square"),
+                                    Tracer = Drawing.new("Line")
+                                }
+                                local d = espDrawings[player]
+                                d.Box.Color = Color3.fromRGB(255, 0, 255)
+                                d.Box.Thickness = 1
+                                d.Box.Filled = false
+                                
+                                d.Name.Color = Color3.fromRGB(255, 255, 255)
+                                d.Name.Size = 13
+                                d.Name.Center = true
+                                d.Name.Outline = true
+                                
+                                d.Dist.Color = Color3.fromRGB(200, 200, 200)
+                                d.Dist.Size = 11
+                                d.Dist.Center = true
+                                d.Dist.Outline = true
+                                
+                                d.HPBg.Color = Color3.fromRGB(0, 0, 0)
+                                d.HPBg.Filled = true
+                                
+                                d.HP.Color = Color3.fromRGB(0, 255, 0)
+                                d.HP.Filled = true
+                                
+                                d.Tracer.Color = Color3.fromRGB(255, 255, 0)
+                                d.Tracer.Thickness = 1
+                                d.Tracer.Transparency = 0.6
+                            end
+                            
+                            local d = espDrawings[player]
+                            
+                            -- Boyut Hesaplama
+                            local headPos = Camera:WorldToScreenPoint(head.Position + Vector3.new(0, 0.5, 0))
+                            local legPos = Camera:WorldToScreenPoint(hrp.Position - Vector3.new(0, 3, 0))
+                            
+                            local height = math.abs(headPos.Y - legPos.Y)
+                            local width = height / 2
+                            local x = pos.X - (width / 2)
+                            local y = headPos.Y
+                            
+                            -- Kutu
+                            d.Box.Position = Vector2.new(x, y)
+                            d.Box.Size = Vector2.new(width, height)
+                            d.Box.Visible = true
+                            
+                            -- İsim
+                            d.Name.Position = Vector2.new(pos.X, y - 16)
+                            d.Name.Text = player.Name
+                            d.Name.Visible = true
+                            
+                            -- Mesafe
+                            local distance = math.floor((localChar.HumanoidRootPart.Position - hrp.Position).Magnitude)
+                            d.Dist.Position = Vector2.new(pos.X, y + height + 2)
+                            d.Dist.Text = distance .. "m"
+                            d.Dist.Visible = true
+                            
+                            -- Can Barı
+                            local hpRatio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                            d.HPBg.Position = Vector2.new(x - 6, y)
+                            d.HPBg.Size = Vector2.new(2, height)
+                            d.HPBg.Visible = true
+                            
+                            d.HP.Position = Vector2.new(x - 6, y + height - (height * hpRatio))
+                            d.HP.Size = Vector2.new(2, height * hpRatio)
+                            d.HP.Visible = true
+                            
+                            if hpRatio > 0.6 then d.HP.Color = Color3.fromRGB(0, 255, 0)
+                            elseif hpRatio > 0.3 then d.HP.Color = Color3.fromRGB(255, 255, 0)
+                            else d.HP.Color = Color3.fromRGB(255, 0, 0) end
+                            
+                            -- Tracer (Çizgi)
+                            if settings.Tracers then
+                                d.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                                d.Tracer.To = Vector2.new(pos.X, y + (height / 2))
+                                d.Tracer.Visible = true
+                            else
+                                d.Tracer.Visible = false
+                            end
+                            
+                        else
+                            -- Ekranda değilse gizle
+                            if espDrawings[player] then
+                                local d = espDrawings[player]
+                                d.Box.Visible = false
+                                d.Name.Visible = false
+                                d.Dist.Visible = false
+                                d.HPBg.Visible = false
+                                d.HP.Visible = false
+                                d.Tracer.Visible = false
                             end
                         end
-                        for i = lineIdx, #d.skeleton do if d.skeleton[i] then d.skeleton[i].Visible = false end end
-                    else
-                        for _, line in ipairs(d.skeleton) do if line then line.Visible = false end end
-                    end
-                    
-                else
-                    if drawings[player] then
-                        for _, drawing in pairs(drawings[player]) do
-                            if type(drawing) ~= "table" then
-                                if drawing.Visible then drawing.Visible = false end
-                            elseif drawing[1] and drawing[1].Remove then
-                                for _, sub in ipairs(drawing) do if sub.Visible then sub.Visible = false end end
-                            end
-                        end
+                    elseif espDrawings[player] then
+                        -- ESP kapalıysa çizimleri gizle
+                        local d = espDrawings[player]
+                        d.Box.Visible = false
+                        d.Name.Visible = false
+                        d.Dist.Visible = false
+                        d.HPBg.Visible = false
+                        d.HP.Visible = false
+                        d.Tracer.Visible = false
                     end
                 end
             end
         end
-    end
-
-    for player, _ in pairs(drawings) do
-        if not activePlayers[player] then clearPlayerDrawings(player) end
-    end
+        
+        -- Ölen/Çıkan oyuncuların çizimlerini temizle
+        for player, _ in pairs(espDrawings) do
+            if not activePlayers[player] then
+                if not player.Parent or not player.Character or not player.Character:FindFirstChild("Humanoid") or player.Character.Humanoid.Health <= 0 then
+                    cleanupESP(player)
+                end
+            end
+        end
+    end)
 end)
 
-return ESP
+-- Oyundan çıkan oyuncuları temizle
+Players.PlayerRemoving:Connect(function(player)
+    cleanupESP(player)
+end)
