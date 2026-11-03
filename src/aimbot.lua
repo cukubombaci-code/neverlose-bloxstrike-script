@@ -1,8 +1,7 @@
--- src/aimbot.lua (Orijinal Mantık + Güvenli FOV Çemberi)
+-- src/aimbot.lua (Fully Automatic / Mobile Ready)
 local Aimbot = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -10,17 +9,14 @@ local settings = {
     Enabled = false,
     Mode = "Legit",
     FOV = 150,
-    Smoothness = 1.5,
+    Smoothness = 2.0, -- Değer büyüdükçe yumuşar (Mobilde 2.0 idealdir)
     Hitbox = "Head",
-    AimKey = Enum.UserInputType.MouseButton2,
     ShowFOV = true,
     FOVColor = Color3.fromRGB(255, 255, 255),
     FOVThickness = 1.5,
     WallCheck = true,
-    IsAiming = false,
 }
 
--- Mobilde çökmeyi önleyen güvenli FOV çemberi
 local fovCircle = nil
 pcall(function()
     fovCircle = Drawing.new("Circle")
@@ -41,29 +37,13 @@ function Aimbot.Toggle(state)
     if not state and fovCircle then fovCircle.Visible = false end
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == settings.AimKey or input.KeyCode == settings.AimKey then
-        settings.IsAiming = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.UserInputType == settings.AimKey or input.KeyCode == settings.AimKey then
-        settings.IsAiming = false
-    end
-end)
-
 local function isVisible(targetPart)
     if not settings.WallCheck then return true end
-    
     local rayOrigin = Camera.CFrame.Position
     local rayDirection = (targetPart.Position - rayOrigin).Unit * (targetPart.Position - rayOrigin).Magnitude
-    
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
-    
     local rayResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
     return rayResult == nil
 end
@@ -131,7 +111,8 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    if not settings.Enabled or not settings.IsAiming then return end
+    -- SADECE AÇIK OLDUĞUNDA ÇALIŞIR (Tuşa basmaya gerek yok)
+    if not settings.Enabled then return end 
     
     local target = getClosestTarget()
     if target then
