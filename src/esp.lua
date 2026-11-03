@@ -2,7 +2,6 @@
 local ESP = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -10,7 +9,7 @@ local settings = {
     MasterEnabled = false,
     TeamCheck = true,
     BoxEnabled = true,
-    BoxStyle = "Normal",
+    BoxStyle = "Normal", -- "Normal" veya "Corner"
     BoxFilled = false,
     BoxColor = Color3.fromRGB(255, 50, 50),
     NameEnabled = true,
@@ -18,13 +17,16 @@ local settings = {
     DistanceEnabled = true,
     DistanceColor = Color3.fromRGB(200, 200, 200),
     HealthEnabled = true,
-    HealthTextEnabled = true,
-    WeaponTextEnabled = true,
-    WeaponTextColor = Color3.fromRGB(255, 255, 100),
-    SkeletonEnabled = false, -- Mobilde kasma yapmaması için varsayılan kapalı (menüden açılabilir)
+    SkeletonEnabled = false,
     SkeletonColor = Color3.fromRGB(255, 255, 255),
     HeadDotEnabled = true,
     HeadDotColor = Color3.fromRGB(255, 255, 255),
+    WeaponTextEnabled = true,
+    WeaponTextColor = Color3.fromRGB(255, 255, 100),
+    WeaponBoxEnabled = true,
+    WeaponBoxColor = Color3.fromRGB(255, 150, 0),
+    LocalWeaponChamsEnabled = false,
+    LocalWeaponChamsColor = Color3.fromRGB(0, 255, 255),
     TracerEnabled = false,
     TracerColor = Color3.fromRGB(255, 255, 0),
     ChamsEnabled = false,
@@ -33,12 +35,45 @@ local settings = {
 
 local drawings = {}
 local highlights = {}
+local weaponHighlights = {}
+
+local skeletonConnections = {
+    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"LowerTorso", "HumanoidRootPart"},
+    {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
+    {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
+    {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
+    {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
+    {"Head", "Torso"}, {"Torso", "HumanoidRootPart"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"}, {"Torso", "Left Leg"}, {"Torso", "Right Leg"}
+}
 
 local function createDrawing(class, props)
     local ok, obj = pcall(Drawing.new, class)
     if not ok then return nil end
     for k, v in pairs(props) do pcall(function() obj[k] = v end) end
     return obj
+end
+
+local function createCornerBox(color)
+    local lines = {}
+    for i = 1, 8 do
+        table.insert(lines, createDrawing("Line", { Color = color, Thickness = 1, Visible = false }))
+    end
+    return lines
+end
+
+local function updateCornerBox(lines, x, y, w, h)
+    if #lines < 8 then return end
+    local lenW = w * 0.2
+    local lenH = h * 0.2
+    lines[1].From = Vector2.new(x, y); lines[1].To = Vector2.new(x + lenW, y)
+    lines[2].From = Vector2.new(x, y); lines[2].To = Vector2.new(x, y + lenH)
+    lines[3].From = Vector2.new(x + w, y); lines[3].To = Vector2.new(x + w - lenW, y)
+    lines[4].From = Vector2.new(x + w, y); lines[4].To = Vector2.new(x + w, y + lenH)
+    lines[5].From = Vector2.new(x, y + h); lines[5].To = Vector2.new(x + lenW, y + h)
+    lines[6].From = Vector2.new(x, y + h); lines[6].To = Vector2.new(x, y + h - lenH)
+    lines[7].From = Vector2.new(x + w, y + h); lines[7].To = Vector2.new(x + w - lenW, y + h)
+    lines[8].From = Vector2.new(x + w, y + h); lines[8].To = Vector2.new(x + w, y + h - lenH)
+    for _, line in ipairs(lines) do line.Visible = true end
 end
 
 local function clearPlayerDrawings(player)
@@ -60,6 +95,10 @@ end
 
 local function clearAll()
     for player, _ in pairs(drawings) do clearPlayerDrawings(player) end
+    if weaponHighlights[LocalPlayer] then
+        for _, hl in pairs(weaponHighlights[LocalPlayer]) do pcall(function() hl:Destroy() end) end
+        weaponHighlights[LocalPlayer] = nil
+    end
     drawings = {}; highlights = {}
 end
 
@@ -82,6 +121,32 @@ RunService.RenderStepped:Connect(function()
     local myTeam = LocalPlayer.Team
     local activePlayers = {}
 
+    -- 1. KENDİ SİLAHIMIZIN PARLAMASI (Local Weapon Chams)
+    pcall(function()
+        local myTool = localChar:FindFirstChildOfClass("Tool")
+        if myTool and settings.LocalWeaponChamsEnabled then
+            if not weaponHighlights[LocalPlayer] then weaponHighlights[LocalPlayer] = {} end
+            for _, part in ipairs(myTool:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if not weaponHighlights[LocalPlayer][part] then
+                        local hl = Instance.new("Highlight")
+                        hl.Adornee = part
+                        hl.Parent = part
+                        weaponHighlights[LocalPlayer][part] = hl
+                    end
+                    local hl = weaponHighlights[LocalPlayer][part]
+                    hl.FillColor = settings.LocalWeaponChamsColor
+                    hl.OutlineColor = settings.LocalWeaponChamsColor
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                end
+            end
+        elseif weaponHighlights[LocalPlayer] then
+            for _, hl in pairs(weaponHighlights[LocalPlayer]) do pcall(function() hl:Destroy() end) end
+            weaponHighlights[LocalPlayer] = nil
+        end
+    end)
+
+    -- 2. DÜŞMANLAR
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local char = player.Character
@@ -93,24 +158,25 @@ RunService.RenderStepped:Connect(function()
             if hrp and head and humanoid and humanoid.Health > 0 and not isTeammate then
                 activePlayers[player] = true
                 
-                -- Güvenli Chams
-                if settings.ChamsEnabled then
-                    if not highlights[player] then
-                        pcall(function()
+                -- Chams
+                pcall(function()
+                    if settings.ChamsEnabled then
+                        if not highlights[player] then
                             local hl = Instance.new("Highlight")
                             hl.Adornee = char
                             hl.FillColor = settings.ChamsColor
                             hl.OutlineColor = settings.ChamsColor
                             hl.Parent = char
                             highlights[player] = hl
-                        end)
+                        end
+                    elseif highlights[player] then
+                        highlights[player]:Destroy()
+                        highlights[player] = nil
                     end
-                elseif highlights[player] then
-                    pcall(function() highlights[player]:Destroy() end)
-                    highlights[player] = nil
-                end
+                end)
 
                 local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                local tool = char:FindFirstChildOfClass("Tool")
                 
                 if onScreen then
                     local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
@@ -124,15 +190,32 @@ RunService.RenderStepped:Connect(function()
                     if not drawings[player] then drawings[player] = {} end
                     local d = drawings[player]
                     
-                    -- Kutu
+                    -- Kutu (Corner veya Normal)
                     if not d.box then
                         d.box = createDrawing("Square", { Color = settings.BoxColor, Thickness = 1, Filled = false })
+                        d.cornerBox = createCornerBox(settings.BoxColor)
+                        d.fill = createDrawing("Square", { Color = settings.BoxColor, Filled = true, Transparency = 0.6 })
                     end
-                    if d.box then
-                        d.box.Color = settings.BoxColor
-                        d.box.Visible = settings.BoxEnabled
-                        d.box.Position = Vector2.new(x, y)
-                        d.box.Size = Vector2.new(width, height)
+                    
+                    if settings.BoxStyle == "Corner" then
+                        if d.box then d.box.Visible = false end
+                        if d.fill then d.fill.Visible = false end
+                        updateCornerBox(d.cornerBox, x, y, width, height)
+                        for _, line in ipairs(d.cornerBox) do line.Color = settings.BoxColor end
+                    else
+                        for _, line in ipairs(d.cornerBox) do line.Visible = false end
+                        if d.box then
+                            d.box.Color = settings.BoxColor
+                            d.box.Visible = settings.BoxEnabled
+                            d.box.Position = Vector2.new(x, y)
+                            d.box.Size = Vector2.new(width, height)
+                        end
+                        if d.fill then
+                            d.fill.Color = settings.BoxColor
+                            d.fill.Visible = settings.BoxFilled
+                            d.fill.Position = Vector2.new(x, y)
+                            d.fill.Size = Vector2.new(width, height)
+                        end
                     end
                     
                     -- Kafa Noktası
@@ -159,6 +242,35 @@ RunService.RenderStepped:Connect(function()
                         d.dist.Text = math.floor((localPos - hrp.Position).Magnitude) .. "m"
                     end
                     
+                    -- SİLAH KUTUSU VE YAZISI
+                    if not d.weaponText then
+                        d.weaponText = createDrawing("Text", { Size = 12, Center = true, Outline = true })
+                        d.weaponBox = createDrawing("Square", { Thickness = 1, Filled = false })
+                    end
+                    if tool then
+                        local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
+                        if handle then
+                            local wPos, wOnScreen = Camera:WorldToViewportPoint(handle.Position)
+                            if wOnScreen and d.weaponBox then
+                                d.weaponBox.Color = settings.WeaponBoxColor
+                                d.weaponBox.Visible = settings.WeaponBoxEnabled
+                                d.weaponBox.Position = Vector2.new(wPos.X - 10, wPos.Y - 10)
+                                d.weaponBox.Size = Vector2.new(20, 20)
+                            elseif d.weaponBox then
+                                d.weaponBox.Visible = false
+                            end
+                        end
+                        if d.weaponText then
+                            d.weaponText.Color = settings.WeaponTextColor
+                            d.weaponText.Visible = settings.WeaponTextEnabled
+                            d.weaponText.Position = Vector2.new(pos.X, y + height + 18)
+                            d.weaponText.Text = "[" .. tool.Name .. "]"
+                        end
+                    elseif d.weaponText then
+                        d.weaponText.Visible = false
+                        d.weaponBox.Visible = false
+                    end
+
                     -- Can Barı
                     if not d.healthBar then
                         d.healthBg = createDrawing("Square", { Color = Color3.fromRGB(20, 20, 20), Filled = true })
@@ -173,6 +285,9 @@ RunService.RenderStepped:Connect(function()
                             d.healthBg.Size = Vector2.new(3, height)
                             d.healthBar.Position = Vector2.new(x - 6, y + height - (height * hp))
                             d.healthBar.Size = Vector2.new(3, height * hp)
+                            if hp > 0.6 then d.healthBar.Color = Color3.fromRGB(0, 255, 0)
+                            elseif hp > 0.3 then d.healthBar.Color = Color3.fromRGB(255, 255, 0)
+                            else d.healthBar.Color = Color3.fromRGB(255, 0, 0) end
                         end
                     end
                     
@@ -185,10 +300,40 @@ RunService.RenderStepped:Connect(function()
                         d.tracer.To = Vector2.new(pos.X, y + (height / 2))
                     end
                     
+                    -- İskelet
+                    if not d.skeleton then d.skeleton = {} end
+                    if settings.SkeletonEnabled then
+                        local lineIdx = 1
+                        for _, conn in ipairs(skeletonConnections) do
+                            local part1 = char:FindFirstChild(conn[1])
+                            local part2 = char:FindFirstChild(conn[2])
+                            if part1 and part2 then
+                                local p1, on1 = Camera:WorldToViewportPoint(part1.Position)
+                                local p2, on2 = Camera:WorldToViewportPoint(part2.Position)
+                                if on1 or on2 then
+                                    if not d.skeleton[lineIdx] then d.skeleton[lineIdx] = createDrawing("Line", { Thickness = 1, Transparency = 0.4 }) end
+                                    local line = d.skeleton[lineIdx]
+                                    line.Color = settings.SkeletonColor
+                                    line.From = Vector2.new(p1.X, p1.Y)
+                                    line.To = Vector2.new(p2.X, p2.Y)
+                                    line.Visible = true
+                                    lineIdx = lineIdx + 1
+                                end
+                            end
+                        end
+                        for i = lineIdx, #d.skeleton do if d.skeleton[i] then d.skeleton[i].Visible = false end end
+                    else
+                        for _, line in ipairs(d.skeleton) do if line then line.Visible = false end end
+                    end
+                    
                 else
                     if drawings[player] then
                         for _, drawing in pairs(drawings[player]) do
-                            if type(drawing) ~= "table" and drawing.Visible then drawing.Visible = false end
+                            if type(drawing) ~= "table" then
+                                if drawing.Visible then drawing.Visible = false end
+                            elseif drawing[1] and drawing[1].Remove then
+                                for _, sub in ipairs(drawing) do if sub.Visible then sub.Visible = false end end
+                            end
                         end
                     end
                 end
