@@ -1,4 +1,4 @@
--- src/security.lua (Full+Full Mobile Optimized Bypass)
+-- src/security.lua (Full+Full Mobile Optimized & Crash-Proof)
 local Security = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -11,8 +11,8 @@ local settings = {
     WalkSpeedSpoof = true,
     JumpPowerSpoof = true,
     RemoteThrottler = true,
-    RemoteDelay = 0.04, -- Sunucuya saniyede en fazla 25 istek gider
-    SanitizeRemotes = true,
+    RemoteDelay = 0.04,
+    SanitizeRemotes = false, -- Varsayılan KAPALI (Eğer oyun izin veriyorsa menüden açarsın)
     AntiDestroy = true,
     HideUI = true
 }
@@ -21,7 +21,7 @@ local lastRemoteTime = 0
 local originalWalkSpeed = 16
 local originalJumpPower = 50
 
--- 1. ANTI-KICK (Sunucu seni atmaya çalışırsa engelle)
+-- 1. ANTI-KICK
 local oldKick
 oldKick = hookfunction(LocalPlayer.Kick, function(self, message)
     if settings.AntiKick and not checkcaller() then
@@ -31,7 +31,7 @@ oldKick = hookfunction(LocalPlayer.Kick, function(self, message)
     return oldKick(self, message)
 end)
 
--- 2. ANTI-DESTROY (Sunucu menünü silmeye çalışırsa engelle)
+-- 2. ANTI-DESTROY
 local oldDestroy
 oldDestroy = hookfunction(Instance.new("ScreenGui").Destroy, function(self)
     if settings.AntiDestroy and not checkcaller() then
@@ -42,7 +42,7 @@ oldDestroy = hookfunction(Instance.new("ScreenGui").Destroy, function(self)
     return oldDestroy(self)
 end)
 
--- 3. METAMETHOD HOOKS (Hız, Arayüz ve Ağ Paketleri Zırhı)
+-- 3. METAMETHOD HOOKS
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 local oldIndex = mt.__index
@@ -59,7 +59,6 @@ mt.__index = newcclosure(function(self, key)
             end
         end
         
-        -- Hide UI from CoreGui (Sunucu Menüyü görmesin)
         if settings.HideUI and self == game:GetService("CoreGui") then
             if key == "FindFirstChild" or key == "GetChildren" or key == "GetDescendants" then
                 return function(_, childName)
@@ -79,18 +78,18 @@ mt.__namecall = newcclosure(function(self, ...)
         local args = {...}
         local remoteName = string.lower(self.Name)
         
-        -- Remote Throttler (Rapid Fire / Triggerbot ban koruması)
+        -- Throttler
         if remoteName:find("fire") or remoteName:find("shoot") or remoteName:find("hit") or remoteName:find("damage") then
             if settings.RemoteThrottler then
                 local currentTime = tick()
                 if currentTime - lastRemoteTime < settings.RemoteDelay then
-                    return -- İsteği yut, sunucu görmesin
+                    return
                 end
                 lastRemoteTime = currentTime
             end
         end
         
-        -- Sanitize Remotes (Kafadan vurduğunu sunucuya gizle, göğüsten vurmuşsun gibi göster)
+        -- Sanitizer (Sadece açıksa çalışır)
         if settings.SanitizeRemotes and remoteName:find("damage") then
             for i, v in pairs(args) do
                 if type(v) == "string" and (v == "Head" or v == "HeadHitbox") then
@@ -107,36 +106,38 @@ end)
 
 setreadonly(mt, true)
 
--- 4. VELOCITY (Anti-Fling) ve VOID (Harita Altı) Koruması
+-- 4. VELOCITY ve VOID Koruması (Çökme korumalı)
 RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local root = char.HumanoidRootPart
-        
-        -- Başka bir hileci seni fırlatırsa anında durdur
-        if settings.AntiFling and root.AssemblyLinearVelocity.Magnitude > 150 then
-            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+    pcall(function() -- KRİTİK DÜZELTME: Oyun çökmesini engeller
+        if not settings.AntiFling and not settings.AntiVoid then return end
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local root = char.HumanoidRootPart
+            
+            if settings.AntiFling and root.AssemblyLinearVelocity.Magnitude > 150 then
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            end
+            
+            if settings.AntiVoid and root.Position.Y < -500 then
+                root.CFrame = CFrame.new(root.Position.X, 50, root.Position.Z)
+            end
         end
-        
-        -- Haritadan aşağı düşersen yukarı çek
-        if settings.AntiVoid and root.Position.Y < -500 then
-            root.CFrame = CFrame.new(root.Position.X, 50, root.Position.Z)
-        end
-    end
+    end)
 end)
 
--- Karakter yenilendiğinde orijinal hızı hafızaya al
+-- Karakter yenilendiğinde hızı kaydet
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
-    local hum = char:WaitForChild("Humanoid", 5)
-    if hum then
-        originalWalkSpeed = hum.WalkSpeed
-        originalJumpPower = hum.JumpPower or 50
-    end
+    pcall(function()
+        local hum = char:WaitForChild("Humanoid", 5)
+        if hum then
+            originalWalkSpeed = hum.WalkSpeed
+            originalJumpPower = hum.JumpPower or 50
+        end
+    end)
 end)
 
--- Menüden ayar değiştirmek için
 function Security.Set(key, value)
     if settings[key] ~= nil then settings[key] = value end
 end
