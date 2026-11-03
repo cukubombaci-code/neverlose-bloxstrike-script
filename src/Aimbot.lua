@@ -1,4 +1,4 @@
--- src/aimbot.lua
+-- src/aimbot.lua (Mobil Uyumlu & Crash Atmayan Sürüm)
 local Aimbot = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,23 +8,12 @@ local LocalPlayer = Players.LocalPlayer
 
 local settings = {
     Enabled = false,
-    Mode = "Legit",
-    FOV = 150,
-    Smoothness = 1.5,       -- Gerçek hilelerdeki gibi düşük değer = hızlı, yüksek = yavaş
+    FOV = 120,
+    Smoothness = 2,
     Hitbox = "Head",
-    AimKey = Enum.UserInputType.MouseButton2,
-    ShowFOV = true,
-    FOVColor = Color3.fromRGB(255, 255, 255),
-    FOVThickness = 1.5,
-    WallCheck = true,       -- Duvarların arkasındakine aim çekmez
-    IsAiming = false,
+    WallCheck = false, -- Mobilde raycast performans yükünü azaltmak için kapalı başlatıyoruz
+    IsAiming = true,   -- Mobilde direkt aktif olsun diye true yaptık
 }
-
-local fovCircle = Drawing.new("Circle")
-fovCircle.Thickness = settings.FOVThickness
-fovCircle.NumSides = 60
-fovCircle.Transparency = 1
-fovCircle.Visible = false
 
 function Aimbot.Set(key, value)
     if settings[key] ~= nil then
@@ -34,37 +23,9 @@ end
 
 function Aimbot.Toggle(state)
     settings.Enabled = state
-    if not state then fovCircle.Visible = false end
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == settings.AimKey or input.KeyCode == settings.AimKey then
-        settings.IsAiming = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.UserInputType == settings.AimKey or input.KeyCode == settings.AimKey then
-        settings.IsAiming = false
-    end
-end)
-
--- Duvardan görünüp görünmediğini kontrol eden fonksiyon (Raycast)
-local function isVisible(targetPart)
-    if not settings.WallCheck then return true end
-    
-    local rayOrigin = Camera.CFrame.Position
-    local rayDirection = (targetPart.Position - rayOrigin).Unit * (targetPart.Position - rayOrigin).Magnitude
-    
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
-    
-    local rayResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-    return rayResult == nil -- Eğer bir engele çarpmadıysa (duvar yoksa) görünüyordur
-end
-
+-- Mobilde en yakın hedefi bulan optimize edilmiş fonksiyon
 local function getClosestTarget()
     local closestPart = nil
     local shortestDist = math.huge
@@ -77,34 +38,21 @@ local function getClosestTarget()
         if player ~= LocalPlayer and player.Character then
             local char = player.Character
             local head = char:FindFirstChild("Head")
-            local chest = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
             local hum = char:FindFirstChildOfClass("Humanoid")
             
             if hum and hum.Health > 0 then
                 local isTeammate = (player.Team == LocalPlayer.Team) and LocalPlayer.Team ~= nil
                 
-                if not isTeammate then
-                    local targetPart = head
-                    if settings.Hitbox == "Chest" and chest then targetPart = chest
-                    elseif settings.Hitbox == "Nearest" then
-                        local distHead = head and (Camera.CFrame.Position - head.Position).Magnitude or math.huge
-                        local distChest = chest and (Camera.CFrame.Position - chest.Position).Magnitude or math.huge
-                        targetPart = (distHead < distChest) and head or chest
-                    end
+                if not isTeammate and head then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                     
-                    if targetPart then
-                        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local distToCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
                         
-                        if onScreen then
-                            local distToCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                            
-                            if distToCenter <= settings.FOV then
-                                if distToCenter < shortestDist then
-                                    if isVisible(targetPart) then
-                                        shortestDist = distToCenter
-                                        closestPart = targetPart
-                                    end
-                                end
+                        if distToCenter <= settings.FOV then
+                            if distToCenter < shortestDist then
+                                shortestDist = distToCenter
+                                closestPart = head
                             end
                         end
                     end
@@ -116,22 +64,7 @@ local function getClosestTarget()
 end
 
 RunService.RenderStepped:Connect(function()
-    if not settings.Enabled then
-        fovCircle.Visible = false
-        return
-    end
-    
-    if settings.ShowFOV then
-        fovCircle.Position = Camera.ViewportSize / 2
-        fovCircle.Radius = settings.FOV
-        fovCircle.Color = settings.FOVColor
-        fovCircle.Thickness = settings.FOVThickness
-        fovCircle.Visible = true
-    else
-        fovCircle.Visible = false
-    end
-    
-    if not settings.IsAiming then return end
+    if not settings.Enabled or not settings.IsAiming then return end
     
     local target = getClosestTarget()
     if target then
@@ -139,13 +72,9 @@ RunService.RenderStepped:Connect(function()
         local currentCFrame = Camera.CFrame
         local targetCFrame = CFrame.lookAt(currentCFrame.Position, targetPos)
         
-        if settings.Mode == "Rage" then
-            Camera.CFrame = targetCFrame
-        else
-            -- Smoothness matematiği (0.1 çok hızlı, 20 çok yavaş)
-            local smoothFactor = 1 / (settings.Smoothness * 10)
-            Camera.CFrame = currentCFrame:Lerp(targetCFrame, math.clamp(smoothFactor, 0.01, 1))
-        end
+        -- Mobili sarsmayacak pürüzsüz geçiş (Lerp)
+        local smoothFactor = math.clamp(1 / (settings.Smoothness * 5), 0.05, 1)
+        Camera.CFrame = currentCFrame:Lerp(targetCFrame, smoothFactor)
     end
 end)
 
