@@ -1,15 +1,15 @@
 -- ==============================================================================
--- NEVERLOSE MOBILE MENÜ (Sadece Arayüz - Sıfır Kütüphane)
+-- NEVERLOSE MENU (Sürüklenebilir, Mobil Uyumlu, Hileli)
 -- ==============================================================================
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local UserInputService = game:GetService("UserInputService")
 
--- Modülleri güvenli çağırma (Modül yoksa çökmez)
-local function SafeCall(moduleName, methodName, ...)
+local function SafeCall(modName, method, ...)
     local NL = getgenv().Neverlose
-    if NL and NL[moduleName] and type(NL[moduleName][methodName]) == "function" then
-        pcall(NL[moduleName][methodName], NL[moduleName], ...)
+    if NL and NL[modName] and type(NL[modName][method]) == "function" then
+        pcall(NL[modName][method], NL[modName], ...)
     end
 end
 
@@ -30,7 +30,7 @@ MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(255, 0, 255)
 
--- Başlık
+-- Başlık (Sürükleme Alanı)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
@@ -53,7 +53,7 @@ CloseBtn.TextSize = 15
 CloseBtn.Parent = MainFrame
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
--- Sekmeler (Tabs)
+-- Sekmeler
 local TabBar = Instance.new("Frame")
 TabBar.Size = UDim2.new(1, -10, 0, 30)
 TabBar.Position = UDim2.new(0, 5, 0, 42)
@@ -69,7 +69,6 @@ Content.Position = UDim2.new(0, 5, 0, 78)
 Content.BackgroundTransparency = 1
 Content.Parent = MainFrame
 
--- Sayfa Oluşturucu
 local Pages = {}
 local function CreatePage(name)
     local scroll = Instance.new("ScrollingFrame")
@@ -161,14 +160,7 @@ local function CreateDropdown(parent, name, options, callback)
 end
 
 local function CreateColorPicker(parent, name, callback)
-    local colors = {
-        ["Kirmizi"] = Color3.fromRGB(255, 50, 50), 
-        ["Yesil"] = Color3.fromRGB(0, 255, 128), 
-        ["Mavi"] = Color3.fromRGB(50, 150, 255), 
-        ["Sari"] = Color3.fromRGB(255, 255, 0), 
-        ["Mor"] = Color3.fromRGB(255, 0, 255), 
-        ["Beyaz"] = Color3.fromRGB(255, 255, 255)
-    }
+    local colors = {["Kirmizi"] = Color3.fromRGB(255, 50, 50), ["Yesil"] = Color3.fromRGB(0, 255, 128), ["Mavi"] = Color3.fromRGB(50, 150, 255), ["Sari"] = Color3.fromRGB(255, 255, 0), ["Mor"] = Color3.fromRGB(255, 0, 255), ["Beyaz"] = Color3.fromRGB(255, 255, 255)}
     local names = {"Kirmizi", "Yesil", "Mavi", "Sari", "Mor", "Beyaz"}
     
     local btn = Instance.new("TextButton")
@@ -192,61 +184,35 @@ local function CreateColorPicker(parent, name, callback)
     end)
 end
 
--- ==============================================================================
 -- SAYFA İÇERİKLERİ
--- ==============================================================================
-
--- 1. RAGE
 local RagePage = CreatePage("Rage")
 CreateHeader(RagePage, "RAGEBOT")
 CreateToggle(RagePage, "Enable Ragebot", false, function(s) SafeCall("ragebot", "Toggle", s) end)
-CreateSlider(RagePage, "FOV", 10, 360, 360, 10, function(v) SafeCall("ragebot", "Set", "FOV", v) end)
-CreateDropdown(RagePage, "Hitbox", {"Head", "Chest"}, function(v) SafeCall("ragebot", "Set", "Hitbox", v) end)
+CreateSlider(RagePage, "Rage FOV", 10, 360, 360, 10, function(v) SafeCall("ragebot", "Set", "FOV", v) end)
 CreateToggle(RagePage, "Auto Fire", true, function(s) SafeCall("ragebot", "Set", "AutoFire", s) end)
-CreateHeader(RagePage, "ANTI-AIM")
-CreateToggle(RagePage, "Enable Anti-Aim", false, function(s) SafeCall("anti-aim", "Toggle", s) end)
-CreateDropdown(RagePage, "AA Mode", {"Mevlana", "Backward"}, function(v) SafeCall("anti-aim", "Set", "Mode", v) end)
 
--- 2. LEGIT
 local LegitPage = CreatePage("Legit")
-CreateHeader(LegitPage, "LEGITBOT")
+CreateHeader(LegitPage, "AIMBOT")
 CreateToggle(LegitPage, "Enable Aimbot", false, function(s) SafeCall("aimbot", "Toggle", s) end)
 CreateSlider(LegitPage, "Aimbot FOV", 10, 360, 150, 10, function(v) SafeCall("aimbot", "Set", "FOV", v) end)
 CreateSlider(LegitPage, "Smoothness", 1, 20, 2, 1, function(v) SafeCall("aimbot", "Set", "Smoothness", v) end)
-CreateDropdown(LegitPage, "Aimbot Hitbox", {"Head", "Chest"}, function(v) SafeCall("aimbot", "Set", "Hitbox", v) end)
-CreateToggle(LegitPage, "Wall Check", true, function(s) SafeCall("aimbot", "Set", "WallCheck", s) end)
-CreateHeader(LegitPage, "TRIGGERBOT")
-CreateToggle(LegitPage, "Enable Triggerbot", false, function(s) SafeCall("triggerbot", "Toggle", s) end)
-CreateSlider(LegitPage, "Trigger Delay (ms)", 10, 500, 50, 10, function(v) SafeCall("triggerbot", "Set", "Delay", v) end)
 
--- 3. VISUALS
 local VisPage = CreatePage("Visuals")
 CreateHeader(VisPage, "ESP")
 CreateToggle(VisPage, "Enable ESP", false, function(s) SafeCall("esp", "Toggle", s) end)
 CreateToggle(VisPage, "Show Box", true, function(s) SafeCall("esp", "Set", "BoxEnabled", s) end)
-CreateColorPicker(VisPage, "Box Color", function(c) SafeCall("esp", "Set", "BoxColor", c) end)
-CreateToggle(VisPage, "Show Name", true, function(s) SafeCall("esp", "Set", "NameEnabled", s) end)
-CreateToggle(VisPage, "Show Health", true, function(s) SafeCall("esp", "Set", "HealthEnabled", s) end)
-CreateToggle(VisPage, "Show Tracers", false, function(s) SafeCall("esp", "Set", "TracerEnabled", s) end)
-CreateHeader(VisPage, "CHAMS")
-CreateToggle(VisPage, "Enable Player Chams", false, function(s) SafeCall("esp", "Set", "ChamsEnabled", s) end)
-CreateColorPicker(VisPage, "Chams Color", function(c) SafeCall("esp", "Set", "ChamsVisibleColor", c) end)
-CreateToggle(VisPage, "Enable Weapon Chams", false, function(s) SafeCall("esp", "Set", "LocalWeaponChamsEnabled", s) end)
+CreateToggle(VisPage, "Show Tracer", false, function(s) SafeCall("esp", "Set", "TracerEnabled", s) end)
+CreateToggle(VisPage, "Enable Chams", false, function(s) SafeCall("esp", "Set", "ChamsEnabled", s) end)
+CreateToggle(VisPage, "Weapon Chams", false, function(s) SafeCall("esp", "Set", "LocalWeaponChamsEnabled", s) end)
 
--- 4. MOVEMENT
 local MovePage = CreatePage("Move")
 CreateHeader(MovePage, "BUNNYHOP")
 CreateToggle(MovePage, "Enable Bhop", false, function(s) SafeCall("movement", "Set", "BhopEnabled", s) end)
 CreateSlider(MovePage, "Bhop Speed", 16, 200, 50, 10, function(v) SafeCall("movement", "Set", "BhopSpeed", v) end)
-CreateHeader(MovePage, "AIR STRAFE")
-CreateToggle(MovePage, "Enable Air Strafe", false, function(s) SafeCall("movement", "Set", "AirStrafeEnabled", s) end)
-CreateSlider(MovePage, "Air Power", 16, 200, 50, 10, function(v) SafeCall("movement", "Set", "AirStrafeSpeed", v) end)
 
 -- Sekme Geçiş Mantığı
 local function SwitchTab(tabName)
-    for name, page in pairs(Pages) do
-        page.Visible = (name == tabName)
-    end
+    for name, page in pairs(Pages) do page.Visible = (name == tabName) end
 end
 
 for tabName, _ in pairs(Pages) do
@@ -261,10 +227,9 @@ for tabName, _ in pairs(Pages) do
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     btn.MouseButton1Click:Connect(function() SwitchTab(tabName) end)
 end
-
 SwitchTab("Rage")
 
--- Sağ Alt Yuvarlak Buton
+-- SÜRÜKLEME VE YUVARLAK BUTON (FAB)
 local FAB = Instance.new("TextButton")
 FAB.Size = UDim2.fromOffset(55, 55)
 FAB.Position = UDim2.new(1, -75, 1, -110)
@@ -280,3 +245,36 @@ Instance.new("UIStroke", FAB).Color = Color3.fromRGB(255, 0, 255)
 FAB.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
+
+-- Menüyü Sürükleme (Başlık çubuğundan tutup çekerek)
+local dragging = false
+local dragInput, dragStart, startPos
+
+Title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Title.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+return { Status = "Menu UI Loaded" }
