@@ -1,7 +1,6 @@
 -- ==============================================================================
--- Neverlose Ultimate Loader v5.0 (jsDelivr CDN + Anti-Crash + RAM Cleaner)
+-- SIRA TESTİ: MENU -> BYPASS -> MODULLER
 -- ==============================================================================
-
 local CONFIG = {
     User = "cukubombaci-code",
     Repo = "neverlose-bloxstrike-script",
@@ -9,72 +8,66 @@ local CONFIG = {
     Path = "src/"
 }
 
--- DİKKAT: GitHub yerine jsDelivr CDN kullanıyoruz (Mobilde çok daha hızlı ve güvenli)
 local BASE_URL = string.format("https://cdn.jsdelivr.net/gh/%s/%s@%s/%s", CONFIG.User, CONFIG.Repo, CONFIG.Branch, CONFIG.Path)
-getgenv().Neverlose = getgenv().Neverlose or {}
+getgenv().Neverlose = {}
 local NL = getgenv().Neverlose
 
-print("[Loader] Baslatiliyor (jsDelivr Modu)...")
-
 local function fetchAndCompile(fileName)
-    -- Önbelleği önlemek için sonuna rastgele sayı ekle (jsDelivr için)
-    local targetURL = BASE_URL .. fileName .. ".lua?v=" .. tostring(math.random(1, 99999))
+    warn("[TEST] Yukleniyor: " .. fileName) 
+    local targetURL = BASE_URL .. fileName .. ".lua"
+    local success, response = pcall(function() return game:HttpGet(targetURL) end)
     
-    local success, response = pcall(function()
-        return game:HttpGet(targetURL)
-    end)
-    
-    if not success or not response or response == "" or response:find("404: Not Found") or response:find("<!DOCTYPE html>") then
-        -- jsDelivr çökerse GitHub'a geri dön (Yedek plan)
-        targetURL = string.format("https://raw.githubusercontent.com/%s/%s/%s/%s%s.lua", CONFIG.User, CONFIG.Repo, CONFIG.Branch, CONFIG.Path, fileName)
-        local backupSuccess, backupRes = pcall(function() return game:HttpGet(targetURL) end)
-        if not backupSuccess or not backupRes or backupRes:find("404") then
-            warn("[Loader] Hata (" .. fileName .. "): Dosya yuklenemedi.")
-            return nil
-        end
-        response = backupRes
+    if not success or not response or response == "" or response:find("404") then
+        warn("[TEST] HATA: " .. fileName .. " indirilemedi!")
+        return nil
     end
     
     local chunk, compileErr = loadstring(response)
     if not chunk then
-        warn("[Loader] Derleme Hatasi (" .. fileName .. "): " .. tostring(compileErr))
+        warn("[TEST] HATA (Derleme): " .. fileName .. " | " .. tostring(compileErr))
         return nil
     end
     
     local runSuccess, runResult = pcall(chunk)
     if not runSuccess then
-        warn("[Loader] Calisma Hatasi (" .. fileName .. "): " .. tostring(runResult))
+        warn("[TEST] HATA (Calisma): " .. fileName .. " | " .. tostring(runResult))
         return nil
     end
     
     if runResult then NL[fileName] = runResult end
+    warn("[TEST] BASARILI: " .. fileName)
     return runResult
 end
 
--- ==============================================================================
--- YÜKLEME SIRALAMASI (RAM DOSTU)
--- ==============================================================================
+-- ==========================================
+-- 1. ADIM: MENÜYÜ YÜKLE
+-- ==========================================
+warn("[TEST] 1. ADIM: MENU YUKLENIYOR...")
+fetchAndCompile("menu")
+warn("[TEST] MENU YUKLENDI. EKRANDA NL BUTONU VAR MI?")
+task.wait(3) -- Menünün oturması için bekle
 
-print("[Loader] 1. Adim: Bypass Yukleniyor...")
+-- ==========================================
+-- 2. ADIM: BYPASS'I YÜKLE
+-- ==========================================
+warn("[TEST] 2. ADIM: BYPASS (SECURITY) YUKLENIYOR...")
 fetchAndCompile("security")
-task.wait(0.3)
-collectgarbage("collect") -- RAM Temizle
+warn("[TEST] BYPASS YUKLENDI. OYUN COKTU MU?")
+task.wait(3)
 
-print("[Loader] 2. Adim: Moduller Yukleniyor...")
+-- ==========================================
+-- 3. ADIM: DİĞER MODÜLLERİ YÜKLE
+-- ==========================================
+warn("[TEST] 3. ADIM: DIGER MODULLER YUKLENIYOR...")
 local modules = {
     "aimbot", "ragebot", "anti-aim", "combat", 
-    "esp", "freecam", "hitbox", "hitsound", 
-    "movement", "triggerbot", "world"
+    "esp", "hitbox", "hitsound", "movement", "triggerbot", "world"
 }
 
 for _, modName in ipairs(modules) do
     fetchAndCompile(modName)
-    task.wait(0.1) -- Telefonun nefes alması için bekle
-    collectgarbage("collect") -- Her modülden sonra RAM'i temizle (Çökme Engelleme)
+    task.wait(0.2)
+    collectgarbage("collect")
 end
 
-task.wait(0.3)
-print("[Loader] 3. Adim: Menu Yukleniyor...")
-fetchAndCompile("menu")
-
-print("[Loader] TAMAMLANDI! Sistem hazir. Sag alttaki NL butonuna bas.")
+warn("[TEST] TUM TESTLER BITTI. OYUN HALA AYAKTA!")
