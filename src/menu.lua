@@ -1,10 +1,10 @@
--- src/menu.lua (Tam Donanımlı & Mobil Uyumlu Ultra Menü)
+-- src/menu.lua (Tam Donanımlı & Full Ayarlanabilir Mobil Menü)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Modülleri Güvenli Çekme (Yüklenmediyse hata vermez)
+-- Tüm Modülleri Güvenli Şekilde Çağırma
 local Aimbot = pcall(function() return require(script.Parent.aimbot) end) and require(script.Parent.aimbot) or nil
 local Rage = pcall(function() return require(script.Parent.ragebot) end) and require(script.Parent.ragebot) or nil
 local AntiAim = pcall(function() return require(script.Parent.anti-aim) end) and require(script.Parent.anti-aim) or nil
@@ -13,17 +13,20 @@ local ESP = pcall(function() return require(script.Parent.esp) end) and require(
 local Freecam = pcall(function() return require(script.Parent.freecam) end) and require(script.Parent.freecam) or nil
 local Hitbox = pcall(function() return require(script.Parent.hitbox) end) and require(script.Parent.hitbox) or nil
 local HitSound = pcall(function() return require(script.Parent.hitsound) end) and require(script.Parent.hitsound) or nil
+local Movement = pcall(function() return require(script.Parent.movement) end) and require(script.Parent.movement) or nil
+local Trigger = pcall(function() return require(script.Parent.triggerbot) end) and require(script.Parent.triggerbot) or nil
+local World = pcall(function() return require(script.Parent.world) end) and require(script.Parent.world) or nil
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NeverloseUltimateMenu"
+ScreenGui.Name = "NeverloseMasterMenu"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = PlayerGui
 
--- Ana Çerçeve (Mobil Boyut Uyumlu)
+-- Ana Çerçeve
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 380, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -190, 0.5, -160)
+MainFrame.Size = UDim2.new(0, 390, 0, 340)
+MainFrame.Position = UDim2.new(0.5, -195, 0.5, -170)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
@@ -52,7 +55,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Neverlose | Mobile Edition"
+Title.Text = "Neverlose | Ultimate Edition"
 Title.TextColor3 = Color3.fromRGB(255, 0, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -73,12 +76,12 @@ CloseBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
 end)
 
--- İçerik Kaydırma Alanı (ScrollingFrame)
+-- Kaydırılabilir İçerik Alanı
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1, -20, 1, -50)
 Scroll.Position = UDim2.new(0, 10, 0, 42)
 Scroll.BackgroundTransparency = 1
-Scroll.CanvasSize = UDim2.new(0, 0, 0, 650)
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 950)
 Scroll.ScrollBarThickness = 4
 Scroll.Parent = MainFrame
 
@@ -87,7 +90,18 @@ UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList.Padding = UDim.new(0, 8)
 UIList.Parent = Scroll
 
--- Yardımcı Eleman Oluşturucular (Toggle ve Butonlar için)
+-- Menü Yardımcı Oluşturucuları
+local function createHeader(text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 25)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "--- " .. text .. " ---"
+    lbl.TextColor3 = Color3.fromRGB(255, 0, 255)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 13
+    lbl.Parent = Scroll
+end
+
 local function createToggle(name, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 32)
@@ -117,27 +131,19 @@ local function createToggle(name, callback)
     end)
 end
 
-local function createHeader(text)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 25)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = "--- " .. text .. " ---"
-    lbl.TextColor3 = Color3.fromRGB(255, 0, 255)
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 13
-    lbl.Parent = Scroll
-end
-
 -- ==========================================
--- MENÜ ELEMANLARI VE BAĞLANTILARI
+-- MENÜ KONTROL BAĞLANTILARI
 -- ==========================================
 
 createHeader("AIMBOT & RAGE")
 if Aimbot then
-    createToggle("Aimbot Toggle", function(state) Aimbot.Toggle(state) end)
+    createToggle("Aimbot Master Toggle", function(state) Aimbot.Toggle(state) end)
 end
 if Rage then
-    createToggle("Ragebot Toggle", function(state) Rage.Toggle(state) end)
+    createToggle("Ragebot (Auto-Fire)", function(state) Rage.Toggle(state) end)
+end
+if Trigger then
+    createToggle("Triggerbot (Tetikleyici)", function(state) Trigger.Toggle(state) end)
 end
 
 createHeader("VISUALS (ESP)")
@@ -146,25 +152,39 @@ if ESP then
     createToggle("ESP Box (Kutu)", function(state) ESP.Set("BoxEnabled", state) end)
     createToggle("ESP Name (İsim)", function(state) ESP.Set("NameEnabled", state) end)
     createToggle("ESP Health (Can Barı)", function(state) ESP.Set("HealthEnabled", state) end)
+    createToggle("ESP Tracer (Çizgiler)", function(state) ESP.Set("TracerEnabled", state) end)
     createToggle("ESP Chams (Parlama)", function(state) ESP.Set("ChamsEnabled", state) end)
 end
 
-createHeader("COMBAT & MISC")
+createHeader("COMBAT & ADVANCED")
 if Combat then
     createToggle("Rapid Fire (Hızlı Ateş)", function(state) Combat.Set("RapidFire", state) end)
-    createToggle("No Recoil (Sekmeme)", function(state) Combat.Set("NoRecoil", state) end)
+    createToggle("No Recoil (Tepmeme)", function(state) Combat.Set("NoRecoil", state) end)
 end
 if Hitbox then
     createToggle("Hitbox Expander (Kafa Büyüt)", function(state) Hitbox.Toggle(state) end)
 end
-if Freecam then
-    createToggle("Freecam (Serbest Kamera)", function(state) Freecam.Toggle(state) end)
-end
 if AntiAim then
     createToggle("Anti-Aim (Mevlana / Spin)", function(state) AntiAim.Toggle(state) end)
 end
+
+createHeader("MOVEMENT & MISC")
+if Movement then
+    createToggle("Bunnyhop (Otomatik Zıplama)", function(state) Movement.Set("BhopEnabled", state) end)
+    createToggle("Air Strafe (Havada Kontrol)", function(state) Movement.Set("AirStrafeEnabled", state) end)
+end
+if Freecam then
+    createToggle("Freecam (Serbest Kamera)", function(state) Freecam.Toggle(state) end)
+end
 if HitSound then
     createToggle("Hitsound (Vuruş Sesi)", function(state) HitSound.Toggle(state) end)
+end
+
+createHeader("WORLD & ENVIRONMENT")
+if World then
+    createToggle("Fullbright (Geceyi Aydınlat)", function(state) World.Set("Fullbright", state) end)
+    createToggle("Remove Fog (Sisi Kaldır)", function(state) World.Set("RemoveFog", state) end)
+    createToggle("Custom FOV (Geniş Görüş)", function(state) World.Set("FOVEnabled", state) end)
 end
 
 -- Sağ Alt Sürüklenebilir NL Butonu (FAB)
@@ -187,8 +207,8 @@ fabStroke.Color = Color3.fromRGB(255, 0, 255)
 fabStroke.Thickness = 2
 fabStroke.Parent = FAB
 
--- Dokunmatik sürükleme (Draggable) desteği
-local dragging, dragInput, dragStart, startPos
+-- Dokunmatik Sürükleme (Draggable) Desteği
+local dragging, dragStart, startPos
 FAB.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
@@ -213,4 +233,4 @@ FAB.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
-return { Status = "Fully Loaded" }
+return { Status = "Fully Loaded & Configurable" }
