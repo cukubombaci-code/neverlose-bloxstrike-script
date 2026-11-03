@@ -1,30 +1,105 @@
--- src/security.lua (Full+Full Profesyonel Koruma ve Güvenlik Duvarı)
+-- src/security.lua (Full+Full Mobile Optimized Bypass)
 local Security = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Workspace = workspace
 
--- 1. Anti-Kick ve Sunucu Müdahale Kalkanı
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-setreadonly(mt, false)
+local settings = {
+    AntiKick = true,
+    AntiFling = true,
+    AntiVoid = true,
+    WalkSpeedSpoof = true,
+    JumpPowerSpoof = true,
+    RemoteThrottler = true,
+    RemoteDelay = 0.04, -- Sunucuya saniyede en fazla 25 istek gider
+    SanitizeRemotes = true,
+    AntiDestroy = true,
+    HideUI = true
+}
 
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    -- Sunucunun seni oyundan atmaya (Kick) çalışmasını engelle
-    if method == "Kick" or method == "kick" then
-        if self == LocalPlayer or self == LocalPlayer.Character then
-            warn("[Neverlose Security] Sunucu Kick girisimi engellendi!")
+local lastRemoteTime = 0
+local originalWalkSpeed = 16
+local originalJumpPower = 50
+
+-- 1. ANTI-KICK (Sunucu seni atmaya çalışırsa engelle)
+local oldKick
+oldKick = hookfunction(LocalPlayer.Kick, function(self, message)
+    if settings.AntiKick and not checkcaller() then
+        warn("[Security] Kick girisimi engellendi! Sunucu Sebebi: " .. tostring(message))
+        return
+    end
+    return oldKick(self, message)
+end)
+
+-- 2. ANTI-DESTROY (Sunucu menünü silmeye çalışırsa engelle)
+local oldDestroy
+oldDestroy = hookfunction(Instance.new("ScreenGui").Destroy, function(self)
+    if settings.AntiDestroy and not checkcaller() then
+        if self.Name == "NeverloseMobileMenu" or self:FindFirstChild("NeverloseMobileMenu") then
             return
         end
     end
+    return oldDestroy(self)
+end)
+
+-- 3. METAMETHOD HOOKS (Hız, Arayüz ve Ağ Paketleri Zırhı)
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+local oldIndex = mt.__index
+setreadonly(mt, false)
+
+mt.__index = newcclosure(function(self, key)
+    if not checkcaller() then
+        local char = LocalPlayer.Character
+        if char and self == char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                if key == "WalkSpeed" and settings.WalkSpeedSpoof then return originalWalkSpeed
+                elseif key == "JumpPower" and settings.JumpPowerSpoof then return originalJumpPower end
+            end
+        end
+        
+        -- Hide UI from CoreGui (Sunucu Menüyü görmesin)
+        if settings.HideUI and self == game:GetService("CoreGui") then
+            if key == "FindFirstChild" or key == "GetChildren" or key == "GetDescendants" then
+                return function(_, childName)
+                    if childName == "NeverloseMobileMenu" then return nil end
+                    return oldIndex(self, key)(self, childName)
+                end
+            end
+        end
+    end
+    return oldIndex(self, key)
+end)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
     
-    -- Şüpheli Teleport veya Hatalı Konum Verisi Gönderimini Filtreleme
-    if method == "MoveTo" and self == LocalPlayer.Character then
-        -- Pozisyon manipülasyonlarının sunucu tarafından ban sebebi olmasını engeller
+    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
+        local args = {...}
+        local remoteName = string.lower(self.Name)
+        
+        -- Remote Throttler (Rapid Fire / Triggerbot ban koruması)
+        if remoteName:find("fire") or remoteName:find("shoot") or remoteName:find("hit") or remoteName:find("damage") then
+            if settings.RemoteThrottler then
+                local currentTime = tick()
+                if currentTime - lastRemoteTime < settings.RemoteDelay then
+                    return -- İsteği yut, sunucu görmesin
+                end
+                lastRemoteTime = currentTime
+            end
+        end
+        
+        -- Sanitize Remotes (Kafadan vurduğunu sunucuya gizle, göğüsten vurmuşsun gibi göster)
+        if settings.SanitizeRemotes and remoteName:find("damage") then
+            for i, v in pairs(args) do
+                if type(v) == "string" and (v == "Head" or v == "HeadHitbox") then
+                    args[i] = "UpperTorso"
+                end
+            end
+        end
+        
+        return oldNamecall(self, unpack(args))
     end
     
     return oldNamecall(self, ...)
@@ -32,62 +107,38 @@ end)
 
 setreadonly(mt, true)
 
--- 2. Paket ve Remote Akışı Maskeleme (Normal Oyuncu Simülasyonu)
-local remoteCooldowns = {}
-
-function Security.SafeFire(remote, ...)
-    if not remote then return end
-    if not remote:IsA("RemoteEvent") and not remote:IsA("RemoteFunction") then return end
-    
-    local currentTime = tick()
-    if not remoteCooldowns[remote] then remoteCooldowns[remote] = 0 end
-    
-    -- Saniyede çok fazla paket göndererek sunucu bot korumasına takılmayı önler (0.04sn sınır)
-    if currentTime - remoteCooldowns[remote] >= 0.04 then
-        remoteCooldowns[remote] = currentTime
-        pcall(function()
-            if remote:IsA("RemoteEvent") then
-                remote:FireServer(...)
-            elseif remote:IsA("RemoteFunction") then
-                remote:InvokeServer(...)
-            end
-        end)
-    end
-end
-
--- 3. Anti-Void / Düşme Koruma Kalkanı (Harita dışına çıkınca otomatik kurtarma)
-local function initAntiVoid()
-    RunService.Heartbeat:Connect(function()
-        pcall(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local hrp = char.HumanoidRootPart
-                -- Eğer haritanın çok altına (void noktasına) düşersen otomatik yukarı güvenli alana çeker
-                if hrp.Position.Y < -500 then
-                    hrp.CFrame = CFrame.new(hrp.Position.X, 50, hrp.Position.Z)
-                    warn("[Neverlose Security] Anti-Void devreye girdi, harita altından kurtarıldı.")
-                end
-            end
-        end)
-    end)
-end
-
--- 4. Kapsamlı Hata ve Çökme (Crash) Koruma Kalkanı
-function Security.Protect(func, ...)
-    local success, result = pcall(func, ...)
-    if not success then
-        warn("[Neverlose Security] Kritik Hata Yakalandi ve Susturuldu: " + tostring(result))
-        return nil
-    end
-    return result
-end
-
--- 5. Ortam Başlatma ve Güvenlik Doğrulaması
-local function initSecurity()
-    pcall(function()
-        if setreadonly and getgenv then
-            setreadonly(getgenv(), false)
+-- 4. VELOCITY (Anti-Fling) ve VOID (Harita Altı) Koruması
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local root = char.HumanoidRootPart
+        
+        -- Başka bir hileci seni fırlatırsa anında durdur
+        if settings.AntiFling and root.AssemblyLinearVelocity.Magnitude > 150 then
+            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
         end
-        initAntiVoid()
-        print("[Neverlose Security] Full+Full Koruma Duvari, Anti-Kick ve Anti-Void Akt
+        
+        -- Haritadan aşağı düşersen yukarı çek
+        if settings.AntiVoid and root.Position.Y < -500 then
+            root.CFrame = CFrame.new(root.Position.X, 50, root.Position.Z)
+        end
+    end
+end)
 
+-- Karakter yenilendiğinde orijinal hızı hafızaya al
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if hum then
+        originalWalkSpeed = hum.WalkSpeed
+        originalJumpPower = hum.JumpPower or 50
+    end
+end)
+
+-- Menüden ayar değiştirmek için
+function Security.Set(key, value)
+    if settings[key] ~= nil then settings[key] = value end
+end
+
+return Security
