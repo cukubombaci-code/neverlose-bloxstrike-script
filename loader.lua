@@ -1,4 +1,4 @@
--- Neverlose Bloxstrike Korumalı Loader
+-- Neverlose Bloxstrike Korumalı Loader (v3.5)
 local HttpService = game:GetService("HttpService")
 
 -- 1. Aşama: Temel Ortam Kontrolü
@@ -14,17 +14,19 @@ if not verifyEnvironment() then return end
 
 print("[Loader] Güvenlik duvarı ve Bypass başlatılıyor...")
 
--- Önbellek kırıcı (GitHub'ın eski kodu göstermesini engeller)
+-- Önbellek kırıcı fonksiyonu (GitHub cache sorununu çözer)
 local function GetUrl(path)
     return "https://raw.githubusercontent.com/cukubombaci-code/neverlose-bloxstrike-script/main/src/" .. path .. "?t=" .. tostring(os.time())
 end
 
 -- 2. Aşama: Bypass Kontrolü (src/security.lua)
 local securitySuccess, securityErr = pcall(function()
-    local code = game:HttpGet(GetUrl("security.lua"))
+    local targetUrl = GetUrl("security.lua")
+    local code = game:HttpGet(targetUrl)
     
     if not code or #code < 10 then
         error("Security dosyası boş veya çekilemedi!")
+    
     end
     
     loadstring(code)()
@@ -39,7 +41,8 @@ print("[Loader] Bypass başarıyla uygulandı. Menü yükleniyor...")
 
 -- 3. Aşama: Menüyü Yükleme (src/menu.lua)
 local menuSuccess, menuErr = pcall(function()
-    local code = game:HttpGet(GetUrl("menu.lua"))
+    local targetUrl = GetUrl("menu.lua")
+    local code = game:HttpGet(targetUrl)
     
     if not code or #code < 10 then
         error("Menu dosyası boş veya çekilemedi!")
