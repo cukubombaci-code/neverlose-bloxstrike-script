@@ -1,4 +1,4 @@
--- src/security.lua (Mobile Safe Bypass - Hookmetamethod İçermez)
+-- src/security.lua (Mobile Safe Bypass)
 local Security = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,10 +10,9 @@ local settings = {
     AntiVoid = true
 }
 
--- 1. ANTI-KICK (Sunucu seni atmaya çalışırsa engelle)
+-- 1. ANTI-KICK
 if settings.AntiKick then
     pcall(function()
-        local oldKick = LocalPlayer.Kick
         LocalPlayer.Kick = function(self, message)
             warn("[Security] Kick engellendi: " .. tostring(message))
         end
@@ -27,13 +26,11 @@ RunService.Heartbeat:Connect(function()
         if char and char:FindFirstChild("HumanoidRootPart") then
             local root = char.HumanoidRootPart
             
-            -- Başka bir hileci seni fırlatırsa durdur
             if settings.AntiFling and root.AssemblyLinearVelocity.Magnitude > 150 then
                 root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                 root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
             end
             
-            -- Haritadan aşağı düşersen yukarı çek
             if settings.AntiVoid and root.Position.Y < -500 then
                 root.CFrame = CFrame.new(root.Position.X, 50, root.Position.Z)
             end
