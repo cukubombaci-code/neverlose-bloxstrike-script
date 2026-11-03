@@ -1,26 +1,23 @@
--- src/menu.lua (Hafif ve Çalışan Neverlose Menüsü)
+-- src/menu.lua (Tam Sürüm - Senin Hile Dosyalarını Çeker)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Hile Modüllerini Yükle (Senin GitHub'ından çekiyor)
+-- Hile Modüllerini Yükle
 local function LoadModule(name)
     local url = "https://raw.githubusercontent.com/cukubombaci-code/neverlose-bloxstrike-script/main/src/" .. name .. ".lua"
     local success, result = pcall(function() return loadstring(game:HttpGet(url))() end)
-    if success then return result else warn("[Menu] " .. name .. " yuklenemedi: " .. tostring(result)) return {} end
+    if success then return result else return {} end
 end
 
 local ESP = LoadModule("esp")
 local Aimbot = LoadModule("aimbot")
 local Rage = LoadModule("ragebot")
-local AntiAim = LoadModule("anti-aim")
 local Movement = LoadModule("movement")
 local Trigger = LoadModule("triggerbot")
 
--- ==========================================
--- ANA MENÜ TASARIMI (Hafif ve Şık)
--- ==========================================
+-- ANA MENÜ TASARIMI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "NeverloseMenu"
 ScreenGui.ResetOnSpawn = false
@@ -28,23 +25,15 @@ ScreenGui.DisplayOrder = 100
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Name = "Main"
-MainFrame.Size = UDim2.new(0, 350, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 350, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false -- Başlangıçta gizli
+MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = MainFrame
-
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(255, 0, 255)
-UIStroke.Thickness = 1.5
-UIStroke.Transparency = 0.5
-UIStroke.Parent = MainFrame
+local UICorner = Instance.new("UICorner"); UICorner.CornerRadius = UDim.new(0, 12); UICorner.Parent = MainFrame
+local UIStroke = Instance.new("UIStroke"); UIStroke.Color = Color3.fromRGB(255, 0, 255); UIStroke.Thickness = 1.5; UIStroke.Parent = MainFrame
 
 -- Başlık (Sürüklenebilir)
 local Header = Instance.new("Frame")
@@ -55,52 +44,32 @@ Header.Parent = MainFrame
 local HeaderCorner = Instance.new("UICorner"); HeaderCorner.CornerRadius = UDim.new(0, 12); HeaderCorner.Parent = Header
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -20, 1, 0)
-Title.Position = UDim2.new(0, 20, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "Neverlose | BloxStrike"
-Title.TextColor3 = Color3.fromRGB(255, 0, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 16
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = Header
+Title.Size = UDim2.new(1, -20, 1, 0); Title.Position = UDim2.new(0, 20, 0, 0)
+Title.BackgroundTransparency = 1; Title.Text = "Neverlose | BloxStrike"
+Title.TextColor3 = Color3.fromRGB(255, 0, 255); Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16; Title.TextXAlignment = Enum.TextXAlignment.Left; Title.Parent = Header
 
--- Kapatma Butonu
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 0, 40)
-CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-CloseBtn.BackgroundTransparency = 1
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 18
-CloseBtn.Parent = Header
+CloseBtn.Size = UDim2.new(0, 40, 0, 40); CloseBtn.Position = UDim2.new(1, -40, 0, 0)
+CloseBtn.BackgroundTransparency = 1; CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50); CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 18; CloseBtn.Parent = Header
 
--- Sekme Butonları İçin Alan
+-- Sekmeler
 local TabList = Instance.new("Frame")
-TabList.Size = UDim2.new(1, 0, 0, 35)
-TabList.Position = UDim2.new(0, 0, 0, 40)
-TabList.BackgroundTransparency = 1
-TabList.Parent = MainFrame
+TabList.Size = UDim2.new(1, 0, 0, 35); TabList.Position = UDim2.new(0, 0, 0, 40)
+TabList.BackgroundTransparency = 1; TabList.Parent = MainFrame
 
 local ContentArea = Instance.new("Frame")
-ContentArea.Size = UDim2.new(1, -20, 1, -85)
-ContentArea.Position = UDim2.new(0, 10, 0, 80)
-ContentArea.BackgroundTransparency = 1
-ContentArea.Parent = MainFrame
+ContentArea.Size = UDim2.new(1, -20, 1, -85); ContentArea.Position = UDim2.new(0, 10, 0, 80)
+ContentArea.BackgroundTransparency = 1; ContentArea.Parent = MainFrame
 
--- ==========================================
--- BUTON OLUŞTURMA FONKSİYONU
--- ==========================================
+-- Buton Oluşturucu
 local function CreateToggle(parent, text, default, callback)
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, 0, 0, 35)
-    Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    Btn.Text = "  " .. text
-    Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Btn.Font = Enum.Font.Gotham
-    Btn.TextSize = 14
-    Btn.TextXAlignment = Enum.TextXAlignment.Left
+    Btn.Size = UDim2.new(1, 0, 0, 35); Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    Btn.Text = "  " .. text; Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Btn.Font = Enum.Font.Gotham; Btn.TextSize = 14; Btn.TextXAlignment = Enum.TextXAlignment.Left
     Btn.Parent = parent
     local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = Btn
     
@@ -123,53 +92,40 @@ local function CreateToggle(parent, text, default, callback)
         UpdateColor()
         if callback then pcall(callback, enabled) end
     end)
-    return Btn
 end
 
 local function CreateTab(name)
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 80, 1, 0)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    TabBtn.Text = name
-    TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TabBtn.Font = Enum.Font.GothamBold
-    TabBtn.TextSize = 12
-    TabBtn.Parent = TabList
+    TabBtn.Size = UDim2.new(0, 80, 1, 0); TabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    TabBtn.Text = name; TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TabBtn.Font = Enum.Font.GothamBold; TabBtn.TextSize = 12; TabBtn.Parent = TabList
     local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = TabBtn
     
     local Page = Instance.new("ScrollingFrame")
-    Page.Size = UDim2.new(1, 0, 1, 0)
-    Page.BackgroundTransparency = 1
-    Page.Visible = false
-    Page.Parent = ContentArea
+    Page.Size = UDim2.new(1, 0, 1, 0); Page.BackgroundTransparency = 1; Page.Visible = false; Page.Parent = ContentArea
     local layout = Instance.new("UIListLayout"); layout.Padding = UDim.new(0, 5); layout.Parent = Page
     return TabBtn, Page
 end
 
--- ==========================================
--- SEKMELER VE HİLELER
--- ==========================================
--- 1. RAGE TAB
+-- Hile Menülerini Doldur
 local RageBtn, RagePage = CreateTab("RAGE")
 CreateToggle(RagePage, "Enable Ragebot", false, function(s) if Rage.Toggle then Rage.Toggle(s) end end)
 CreateToggle(RagePage, "Auto Fire", true, function(s) if Rage.Set then Rage.Set("AutoFire", s) end end)
 
--- 2. AIMBOT TAB
 local AimBtn, AimPage = CreateTab("AIMBOT")
 CreateToggle(AimPage, "Enable Legitbot", false, function(s) if Aimbot.Toggle then Aimbot.Toggle(s) end end)
 CreateToggle(AimPage, "Enable Triggerbot", false, function(s) if Trigger.Toggle then Trigger.Toggle(s) end end)
 
--- 3. VISUALS TAB
 local VisBtn, VisPage = CreateTab("VISUALS")
 CreateToggle(VisPage, "Enable ESP", false, function(s) if ESP.Toggle then ESP.Toggle(s) end end)
 CreateToggle(VisPage, "Show Box", true, function(s) if ESP.Set then ESP.Set("BoxEnabled", s) end end)
+CreateToggle(VisPage, "Enable Chams", false, function(s) if ESP.Set then ESP.Set("ChamsEnabled", s) end end)
 
--- 4. MOVEMENT TAB
 local MovBtn, MovPage = CreateTab("MOVEMENT")
 CreateToggle(MovPage, "Enable Bunnyhop", false, function(s) if Movement.Set then Movement.Set("BhopEnabled", s) end end)
 CreateToggle(MovPage, "Enable Air Strafe", false, function(s) if Movement.Set then Movement.Set("AirStrafeEnabled", s) end end)
 
--- Sekme Geçiş Mantığı
+-- Sekme Geçişleri
 local tabs = { {Btn=RageBtn, Page=RagePage}, {Btn=AimBtn, Page=AimPage}, {Btn=VisBtn, Page=VisPage}, {Btn=MovBtn, Page=MovPage} }
 local function SelectTab(index)
     for i, tab in ipairs(tabs) do
@@ -181,14 +137,11 @@ RageBtn.MouseButton1Click:Connect(function() SelectTab(1) end)
 AimBtn.MouseButton1Click:Connect(function() SelectTab(2) end)
 VisBtn.MouseButton1Click:Connect(function() SelectTab(3) end)
 MovBtn.MouseButton1Click:Connect(function() SelectTab(4) end)
-SelectTab(1) -- İlk sekmeyi aç
+SelectTab(1)
 
--- Kapatma Butonu Mantığı
-CloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-end)
+CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
--- Sürükleme Mantığı
+-- Sürükleme
 local dragging, dragInput, dragStart, startPos
 Header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -203,9 +156,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- ==========================================
--- MOBİL BUTON (FAB) - Menüyü Açıp Kapatır
--- ==========================================
+-- MOBİL BUTON (FAB)
 local mobileGui = Instance.new("ScreenGui")
 mobileGui.Name = "NeverloseMobileBtn"
 mobileGui.ResetOnSpawn = false
@@ -214,19 +165,13 @@ pcall(function() mobileGui.Parent = game:GetService("CoreGui") end)
 if not mobileGui.Parent then mobileGui.Parent = PlayerGui end
 
 local FAB = Instance.new("TextButton")
-FAB.Size = UDim2.fromOffset(60, 60)
-FAB.Position = UDim2.new(1, -80, 1, -100)
-FAB.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-FAB.Text = "NL"
-FAB.TextColor3 = Color3.fromRGB(255, 255, 255)
-FAB.Font = Enum.Font.GothamBold
-FAB.TextSize = 22
-FAB.BorderSizePixel = 0
-FAB.Parent = mobileGui
+FAB.Size = UDim2.fromOffset(60, 60); FAB.Position = UDim2.new(1, -80, 1, -100)
+FAB.BackgroundColor3 = Color3.fromRGB(20, 20, 25); FAB.Text = "NL"
+FAB.TextColor3 = Color3.fromRGB(255, 255, 255); FAB.Font = Enum.Font.GothamBold
+FAB.TextSize = 22; FAB.BorderSizePixel = 0; FAB.Parent = mobileGui
 local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(1, 0); corner.Parent = FAB
 local stroke = Instance.new("UIStroke"); stroke.Color = Color3.fromRGB(255, 0, 255); stroke.Thickness = 2; stroke.Parent = FAB
 
--- FAB Sürükleme
 local fabDragging, fabDragInput, fabDragStart, fabStartPos
 FAB.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -244,12 +189,9 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Butona Tıklayınca Menüyü Aç/Kapat
 FAB.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
     FAB.Size = UDim2.fromOffset(50, 50)
     task.wait(0.1)
     FAB.Size = UDim2.fromOffset(60, 60)
 end)
-
-print("[Menu] Gercek Neverlose Menusu Yuklendi!")
