@@ -1,4 +1,4 @@
--- src/triggerbot.lua (Mobil Uyumlu & Güvenli Triggerbot)
+-- src/triggerbot.lua (Full+Full Çökme Korumalı Triggerbot)
 local Trigger = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,14 +7,15 @@ local LocalPlayer = Players.LocalPlayer
 
 local settings = {
     Enabled = false,
-    Delay = 40,             -- Milisaniye gecikme (Mobilde tepki süresi için dengeli)
+    Delay = 40,             -- Hedefe kilitlendikten sonra ateş etme gecikmesi (ms)
     Hitbox = "Head",        -- "Head", "Chest" veya "Any"
     TeamCheck = true,
-    WallCheck = false       -- Duvar arkası kontrolü
+    ShotCooldown = 150      -- Art arda sıkma koruması (Sunucudan atmaması için)
 }
 
-local targetStartTime = 0
 local currentTarget = nil
+local targetStartTime = 0
+local lastShotTime = 0
 
 function Trigger.Set(key, value)
     if settings[key] ~= nil then
@@ -37,10 +38,7 @@ local function getTargetUnderCrosshair()
         
         local rayParams = RaycastParams.new()
         rayParams.FilterType = Enum.RaycastFilterType.Exclude
-        
-        -- Kendi karakterimizi ve kollarımızı taramadan hariç tut
-        local ignoreList = {LocalPlayer.Character}
-        rayParams.FilterDescendantsInstances = ignoreList
+        rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
 
         local result = workspace:Raycast(ray.Origin, ray.Direction * 800, rayParams)
         
@@ -56,10 +54,7 @@ local function getTargetUnderCrosshair()
                         return nil
                     end
                     
-                    -- Duvar kontrolü (Eğer kapalıysa ve arada başka bir parça varsa iptal et)
-                    -- Raycast zaten çarpışma noktasını verdiği için doğrudan vurduğu parçayı inceleriz
-                    
-                    -- Hitbox Filtresi
+                    -- Hitbox Filtresi (Kafa veya Göğüs)
                     if settings.Hitbox == "Head" and part.Name == "Head" then
                         return player
                     elseif settings.Hitbox == "Chest" and (part.Name == "UpperTorso" or part.Name == "Torso") then
@@ -92,13 +87,16 @@ RunService.RenderStepped:Connect(function()
                 targetStartTime = currentTime
             end
             
-            -- Gecikme süresi dolduysa ateş et
+            -- 1. Gecikme süresi doldu mu?
             if currentTime - targetStartTime >= settings.Delay then
-                local char = LocalPlayer.Character
-                local tool = char and char:FindFirstChildOfClass("Tool")
-                if tool then
-                    tool:Activate()
-                    targetStartTime = currentTime + 150 -- Spam engelleme / Cooldown
+                -- 2. Sıkma koruması (Cooldown) doldu mu?
+                if currentTime - lastShotTime >= settings.ShotCooldown then
+                    local char = LocalPlayer.Character
+                    local tool = char and char:FindFirstChildOfClass("Tool")
+                    if tool then
+                        tool:Activate()
+                        lastShotTime = currentTime -- Süreyi güncelle
+                    end
                 end
             end
         else
