@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Neverlose Ultimate Zırhlı & Akıllı Loader v4.0 (Mobile / Crash-Proof)
+-- Neverlose Ultimate Loader v5.0 (jsDelivr CDN + Anti-Crash + RAM Cleaner)
 -- ==============================================================================
 
 local CONFIG = {
@@ -9,76 +9,58 @@ local CONFIG = {
     Path = "src/"
 }
 
-local BASE_URL = string.format("https://raw.githubusercontent.com/%s/%s/%s/%s", CONFIG.User, CONFIG.Repo, CONFIG.Branch, CONFIG.Path)
+-- DİKKAT: GitHub yerine jsDelivr CDN kullanıyoruz (Mobilde çok daha hızlı ve güvenli)
+local BASE_URL = string.format("https://cdn.jsdelivr.net/gh/%s/%s@%s/%s", CONFIG.User, CONFIG.Repo, CONFIG.Branch, CONFIG.Path)
 getgenv().Neverlose = getgenv().Neverlose or {}
 local NL = getgenv().Neverlose
 
-print(string.format("[Loader] Baslatiliyor... | Hedef: %s/%s", CONFIG.User, CONFIG.Repo))
+print("[Loader] Baslatiliyor (jsDelivr Modu)...")
 
 local function fetchAndCompile(fileName)
-    local targetURL = BASE_URL .. fileName .. ".lua"
+    -- Önbelleği önlemek için sonuna rastgele sayı ekle (jsDelivr için)
+    local targetURL = BASE_URL .. fileName .. ".lua?v=" .. tostring(math.random(1, 99999))
     
-    -- 1. İndirme (Ağ Koruması)
     local success, response = pcall(function()
         return game:HttpGet(targetURL)
     end)
     
-    if not success then
-        warn("[Loader] Ağ Hatası (" .. fileName .. "): Bağlantı kurulamadı.")
-        return nil
+    if not success or not response or response == "" or response:find("404: Not Found") or response:find("<!DOCTYPE html>") then
+        -- jsDelivr çökerse GitHub'a geri dön (Yedek plan)
+        targetURL = string.format("https://raw.githubusercontent.com/%s/%s/%s/%s%s.lua", CONFIG.User, CONFIG.Repo, CONFIG.Branch, CONFIG.Path, fileName)
+        local backupSuccess, backupRes = pcall(function() return game:HttpGet(targetURL) end)
+        if not backupSuccess or not backupRes or backupRes:find("404") then
+            warn("[Loader] Hata (" .. fileName .. "): Dosya yuklenemedi.")
+            return nil
+        end
+        response = backupRes
     end
     
-    -- 2. İçerik Kontrolü (404 ve HTML sayfası koruması)
-    if not response or response == "" or response:find("404: Not Found") or response:find("<!DOCTYPE html>") then
-        warn("[Loader] Geçersiz İçerik (" .. fileName .. "): Dosya bulunamadı!")
-        return nil
-    end
-    
-    if #response < 10 then
-        warn("[Loader] Kritik Hata (" .. fileName .. "): İndirilen veri çok kısa veya boş!")
-        return nil
-    end
-    
-    -- 3. Derleme (Syntax Koruması)
     local chunk, compileErr = loadstring(response)
     if not chunk then
-        warn("[Loader] Derleme Hatası (" .. fileName .. "): " .. tostring(compileErr))
+        warn("[Loader] Derleme Hatasi (" .. fileName .. "): " .. tostring(compileErr))
         return nil
     end
     
-    -- 4. Çalıştırma (Runtime Koruması - Çökme Engelleme)
     local runSuccess, runResult = pcall(chunk)
     if not runSuccess then
-        warn("[Loader] Çalışma Zamanı Hatası (" .. fileName .. "): " .. tostring(runResult))
+        warn("[Loader] Calisma Hatasi (" .. fileName .. "): " .. tostring(runResult))
         return nil
     end
     
-    -- 5. Başarılıysa Global Havuza Kaydet
-    if runResult then
-        NL[fileName] = runResult
-    end
-    
+    if runResult then NL[fileName] = runResult end
     return runResult
 end
 
 -- ==============================================================================
--- 1. ADIM: BYPASS (GÜVENLİK KATMANI)
+-- YÜKLEME SIRALAMASI (RAM DOSTU)
 -- ==============================================================================
--- Güvenlik her zaman en önce yüklenmelidir ki diğer modüller koruma altında çalışsın.
-print("\n[Loader] 1. Adim: Guvenlik Duvari (Bypass) Devrede...")
-local sec = fetchAndCompile("security")
-if sec then
-    print("[Loader] Guvenlik Katmani Aktif. (Anti-Kick, Anti-Void, Throttler)")
-else
-    warn("[Loader] Uyari: Guvenlik katmani yuklenemedi, devam ediliyor...")
-end
 
-task.wait(0.5) -- Telefonun ağ isteklerini sindirmesi için kısa bir mola
+print("[Loader] 1. Adim: Bypass Yukleniyor...")
+fetchAndCompile("security")
+task.wait(0.3)
+collectgarbage("collect") -- RAM Temizle
 
--- ==============================================================================
--- 2. ADIM: OYUN MODÜLLERİ
--- ==============================================================================
-print("\n[Loader] 2. Adim: Oyun Modulleri Yukleniyor...")
+print("[Loader] 2. Adim: Moduller Yukleniyor...")
 local modules = {
     "aimbot", "ragebot", "anti-aim", "combat", 
     "esp", "freecam", "hitbox", "hitsound", 
@@ -87,18 +69,12 @@ local modules = {
 
 for _, modName in ipairs(modules) do
     fetchAndCompile(modName)
-    task.wait(0.1) -- Her modül arasında bekle (Mobil kasmasını/çökmesini engeller)
+    task.wait(0.1) -- Telefonun nefes alması için bekle
+    collectgarbage("collect") -- Her modülden sonra RAM'i temizle (Çökme Engelleme)
 end
 
 task.wait(0.3)
+print("[Loader] 3. Adim: Menu Yukleniyor...")
+fetchAndCompile("menu")
 
--- ==============================================================================
--- 3. ADIM: MENÜ (ARAYÜZ)
--- ==============================================================================
-print("\n[Loader] 3. Adim: Arayuz (Menu) Yukleniyor...")
-local menu = fetchAndCompile("menu")
-if menu then
-    print("\n[Loader] BASARILI! Menu hazir. Sag alttaki 'NL' butonuna tiklayarak acabilirsin.")
-else
-    warn("\n[Loader] KRITIK HATA: Menu yuklenemedi!")
-end
+print("[Loader] TAMAMLANDI! Sistem hazir. Sag alttaki NL butonuna bas.")
